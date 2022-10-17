@@ -1,0 +1,20 @@
+diff --git a/facexlib/detection/__init__.py b/facexlib/detection/__init__.py
+index f5d34ea..9e3b247 100644
+--- a/facexlib/detection/__init__.py
++++ b/facexlib/detection/__init__.py
+@@ -1,5 +1,6 @@
+ import torch
+ from copy import deepcopy
++import os
+ 
+ from facexlib.utils import load_file_from_url
+ from .retinaface import RetinaFace
+@@ -16,7 +17,7 @@ def init_detection_model(model_name, half=False, device='cuda', model_rootpath=N
+         raise NotImplementedError(f'{model_name} is not implemented.')
+ 
+     model_path = load_file_from_url(
+-        url=model_url, model_dir='facexlib/weights', progress=True, file_name=None, save_dir=model_rootpath)
++        url=model_url, model_dir=f'{os.getcwd()}/src/facexlib/weights', progress=True, file_name=None, save_dir=model_rootpath)
+ 
+     # TODO: clean pretrained model
+     load_net = torch.load(model_path, map_location=lambda storage, loc: storage)
