@@ -140,6 +140,10 @@
             invokeai-amd = nixpkgs_.mkShell {
               name = "invokeai-amd";
               propagatedBuildInputs = requirements nixpkgs_;
+              shellHook = ''
+                export NIXPKGS_ALLOW_UNFREE=1
+                export LD_LIBRARY_PATH=$(nix-build -E 'let nixpkgs = import <nixpkgs> {}; in nixpkgs.lapack.override { lapackProvider = nixpkgs.mkl; }')/lib:$(nix-build -E 'let nixpkgs = import <nixpkgs> {}; in nixpkgs.blas.override { blasProvider = nixpkgs.mkl; }')/lib
+              '';
             };
             default = invokeai-amd;
           });
