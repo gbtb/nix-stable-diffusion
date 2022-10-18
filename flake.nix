@@ -122,6 +122,7 @@
           let
             nixpkgs_ = import inputs.nixpkgs {
               inherit system;
+              config.allowUnfree = true; #both CUDA and MKL are unfree
               overlays = [
                 (final: prev: {
                   python3 = prev.python3.override {
@@ -137,14 +138,23 @@
             };
           in
           rec {
-            invokeai-amd = nixpkgs_.mkShell {
+            invokeai-amd = nixpkgs_.mkShell 
+            (let 
+              lapack = nixpkgs_.lapack.override { lapackProvider = nixpkgs_.mkl; };
+              blas = nixpkgs_.lapack.override { lapackProvider = nixpkgs_.mkl; };
+            in
+            {
               name = "invokeai-amd";
               propagatedBuildInputs = requirements nixpkgs_;
               shellHook = ''
+                #on my machine SD segfaults somewhere inside scipy with openblas, so I had to use another blas impl
+                #build of scipy with non-default blas is broken, therefore overriding lib in runtime
+
                 export NIXPKGS_ALLOW_UNFREE=1
-                export LD_LIBRARY_PATH=$(nix-build -E 'let nixpkgs = import <nixpkgs> {}; in nixpkgs.lapack.override { lapackProvider = nixpkgs.mkl; }')/lib:$(nix-build -E 'let nixpkgs = import <nixpkgs> {}; in nixpkgs.blas.override { blasProvider = nixpkgs.mkl; }')/lib
+                export LD_LIBRARY_PATH=${lapack}/lib:${blas}/lib
+                cd InvokeAI
               '';
-            };
+            });
             default = invokeai-amd;
           });
     };
