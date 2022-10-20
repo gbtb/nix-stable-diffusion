@@ -113,6 +113,14 @@
           });
           torch = torch-bin;
           torchvision = torchvision-bin;
+          #overriding because of https://github.com/NixOS/nixpkgs/issues/196653
+          opencv4 = pythonPackages.opencv4.override { openblas = nixpkgs.blas; };
+        };
+      overlay_nvidia = nixpkgs: pythonPackages:
+        {
+          torch = pythonPackages.torch.override {
+            cudaSupport = true;
+          };
         };
     in
     {
@@ -122,7 +130,19 @@
           let
             nixpkgs_ = import inputs.nixpkgs {
               inherit system;
-              config.allowUnfree = true; #both CUDA and MKL are unfree
+              overlays = [
+                (final: prev: {
+                  python3 = prev.python3.override {
+                    packageOverrides =
+                      python-self: python-super:
+                      (overlay_default prev python-super) //
+                      (overlay_pynixify python-self);
+                  };
+                })
+              ];
+            };
+            nixpkgs_amd = import inputs.nixpkgs {
+              inherit system;
               overlays = [
                 (final: prev: {
                   python3 = prev.python3.override {
@@ -131,31 +151,54 @@
                       (overlay_default prev python-super) //
                       (overlay_amd prev python-super) //
                       (overlay_pynixify python-self);
-                      #((import ./pynixify/overlay.nix) python-self python-super);
+                  };
+                })
+              ];
+            };
+            nixpkgs_nvidia = import inputs.nixpkgs {
+              inherit system;
+              config.allowUnfree = true; #CUDA is unfree
+              overlays = [
+                (final: prev: {
+                  python3 = prev.python3.override {
+                    packageOverrides =
+                      python-self: python-super:
+                      (overlay_default prev python-super) //
+                      (overlay_nvidia prev python-super) //
+                      (overlay_pynixify python-self);
                   };
                 })
               ];
             };
           in
           rec {
-            invokeai-amd = nixpkgs_.mkShell 
-            (let 
-              lapack = nixpkgs_.lapack.override { lapackProvider = nixpkgs_.mkl; };
-              blas = nixpkgs_.lapack.override { lapackProvider = nixpkgs_.mkl; };
-            in
-            {
-              name = "invokeai-amd";
-              propagatedBuildInputs = requirements nixpkgs_;
-              shellHook = ''
-                #on my machine SD segfaults somewhere inside scipy with openblas, so I had to use another blas impl
-                #build of scipy with non-default blas is broken, therefore overriding lib in runtime
-
-                export NIXPKGS_ALLOW_UNFREE=1
-                export LD_LIBRARY_PATH=${lapack}/lib:${blas}/lib
-                cd InvokeAI
-              '';
-            });
-            default = invokeai-amd;
+            invokeai = {
+              default = nixpkgs_amd.mkShell
+                ({
+                  name = "invokeai";
+                  propagatedBuildInputs = requirements nixpkgs_;
+                  shellHook = ''
+                    cd InvokeAI
+                  '';
+                });
+              amd = nixpkgs_amd.mkShell
+                ({
+                  name = "invokeai.amd";
+                  propagatedBuildInputs = requirements nixpkgs_amd;
+                  shellHook = ''
+                    cd InvokeAI
+                  '';
+                });
+              nvidia = nixpkgs_nvidia.mkShell
+                ({
+                  name = "invokeai.nvidia";
+                  propagatedBuildInputs = requirements nixpkgs_nvidia;
+                  shellHook = ''
+                    cd InvokeAI
+                  '';
+                });
+            };
+            default = invokeai.amd;
           });
     };
 }
