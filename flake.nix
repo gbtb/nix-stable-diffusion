@@ -19,6 +19,16 @@
         torchvision
         numpy
 
+        addict
+        future
+        lmdb
+        pyyaml
+        scikitimage
+        tqdm
+        yapf
+        gdown
+        lpips
+
         albumentations
         opencv4
         pudb
@@ -86,6 +96,7 @@
           realesrgan = rmCallPackage ./packages/realesrgan { opencv-python = self.opencv4; };
           filterpy = callPackage ./packages/filterpy { };
           kornia = callPackage ./packages/kornia { };
+          lpips = callPackage ./packages/lpips { };
           torch-fidelity = callPackage ./packages/torch-fidelity { };
           resize-right = callPackage ./packages/resize-right { };
           torchdiffeq = callPackage ./packages/torchdiffeq { };
@@ -130,19 +141,7 @@
           let
             nixpkgs_ = import inputs.nixpkgs {
               inherit system;
-              overlays = [
-                (final: prev: {
-                  python3 = prev.python3.override {
-                    packageOverrides =
-                      python-self: python-super:
-                      (overlay_default prev python-super) //
-                      (overlay_pynixify python-self);
-                  };
-                })
-              ];
-            };
-            nixpkgs_amd = import inputs.nixpkgs {
-              inherit system;
+              config.allowUnfree = true; #both CUDA and MKL are unfree
               overlays = [
                 (final: prev: {
                   python3 = prev.python3.override {
