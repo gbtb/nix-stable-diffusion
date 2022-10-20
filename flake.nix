@@ -19,6 +19,16 @@
         torchvision
         numpy
 
+        addict
+        future
+        lmdb
+        pyyaml
+        scikitimage
+        tqdm
+        yapf
+        gdown
+        lpips
+
         albumentations
         opencv4
         pudb
@@ -73,11 +83,10 @@
           callPackage = self.callPackage;
           rmCallPackage = path: args: rm (callPackage path args);
         in
-        rec        {
+        rec {
 
           pydeprecate = callPackage ./packages/pydeprecate { };
-          taming-transformers-rom1504 =
-            callPackage ./packages/taming-transformers-rom1504 { };
+          taming-transformers-rom1504 = callPackage ./packages/taming-transformers-rom1504 { };
           albumentations = rmCallPackage ./packages/albumentations { opencv-python-headless = self.opencv4; };
           qudida = rmCallPackage ./packages/qudida { opencv-python-headless = self.opencv4; };
           gfpgan = rmCallPackage ./packages/gfpgan { opencv-python = self.opencv4; };
@@ -86,6 +95,7 @@
           realesrgan = rmCallPackage ./packages/realesrgan { opencv-python = self.opencv4; };
           filterpy = callPackage ./packages/filterpy { };
           kornia = callPackage ./packages/kornia { };
+          lpips = callPackage ./packages/lpips { };
           torch-fidelity = callPackage ./packages/torch-fidelity { };
           resize-right = callPackage ./packages/resize-right { };
           torchdiffeq = callPackage ./packages/torchdiffeq { };
@@ -138,8 +148,8 @@
             };
           in
           rec {
-            invokeai-amd = nixpkgs_.mkShell 
-            (let 
+            invokeai-amd = nixpkgs_.mkShell
+            (let
               lapack = nixpkgs_.lapack.override { lapackProvider = nixpkgs_.mkl; };
               blas = nixpkgs_.lapack.override { lapackProvider = nixpkgs_.mkl; };
             in
@@ -152,7 +162,7 @@
 
                 export NIXPKGS_ALLOW_UNFREE=1
                 export LD_LIBRARY_PATH=${lapack}/lib:${blas}/lib
-                cd InvokeAI
+                #cd InvokeAI
               '';
             });
             default = invokeai-amd;
