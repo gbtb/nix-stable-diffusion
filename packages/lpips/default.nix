@@ -2,7 +2,8 @@
 # If you run pynixify again, the file will be either overwritten or
 # deleted, and you will lose the changes you made to it.
 
-{ buildPythonPackage, fetchPypi, lib }:
+{ buildPythonPackage, fetchPypi, lib, numpy, tqdm, scipy, torch
+  , torchvision }:
 
 buildPythonPackage rec {
   pname = "lpips";
@@ -10,8 +11,11 @@ buildPythonPackage rec {
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "0afxbg5scrlydqkm1cwlnlb0mffrzl785gn4wxrw9xnpqmn130fl";
+    sha256 = "OEYzHfbGloiuw9MApe7vbFKUNbyEYL1YIBw9YuVhiPo=";
   };
+
+  propagatedBuildInputs =
+    [ numpy tqdm scipy torch torchvision ];
 
   # TODO FIXME
   doCheck = false;
