@@ -37,6 +37,8 @@
         gradio
         fonts
         font-roboto
+        piexif
+        websockets
 
         albumentations
         opencv4
