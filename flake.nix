@@ -28,6 +28,9 @@
         yapf
         gdown
         lpips
+        fastapi
+        lark
+        gradio
 
         albumentations
         opencv4
@@ -97,6 +100,7 @@
           filterpy = callPackage ./packages/filterpy { };
           kornia = callPackage ./packages/kornia { };
           lpips = callPackage ./packages/lpips { };
+          gradio = callPackage ./packages/gradio { };
           torch-fidelity = callPackage ./packages/torch-fidelity { };
           resize-right = callPackage ./packages/resize-right { };
           torchdiffeq = callPackage ./packages/torchdiffeq { };
