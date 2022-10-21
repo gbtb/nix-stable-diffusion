@@ -30,6 +30,9 @@
         lpips
         fastapi
         lark
+        analytics-python
+        ffmpy
+        markdown-it-py
         gradio
 
         albumentations
@@ -100,6 +103,9 @@
           filterpy = callPackage ./packages/filterpy { };
           kornia = callPackage ./packages/kornia { };
           lpips = callPackage ./packages/lpips { };
+          ffmpy = callPackage ./packages/ffmpy { };
+          analytics-python = callPackage ./packages/analytics-python { };
+          markdown-it-py = callPackage ./packages/markdown-it-py { };
           gradio = callPackage ./packages/gradio { };
           torch-fidelity = callPackage ./packages/torch-fidelity { };
           resize-right = callPackage ./packages/resize-right { };
