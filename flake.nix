@@ -36,6 +36,7 @@
         shap
         gradio
         fonts
+        font-roboto
 
         albumentations
         opencv4
@@ -107,6 +108,7 @@
           ffmpy = callPackage ./packages/ffmpy { };
           shap = callPackage ./packages/shap { };
           fonts = callPackage ./packages/fonts { };
+          font-roboto = callPackage ./packages/font-roboto { };
           analytics-python = callPackage ./packages/analytics-python { };
           markdown-it-py = callPackage ./packages/markdown-it-py { };
           gradio = callPackage ./packages/gradio { };
