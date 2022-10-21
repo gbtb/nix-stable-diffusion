@@ -33,6 +33,7 @@
         analytics-python
         ffmpy
         markdown-it-py
+        shap
         gradio
 
         albumentations
@@ -62,7 +63,6 @@
         clip
         k-diffusion
         gfpgan
-
       ];
       overlay_default = nixpkgs: pythonPackages:
         {
@@ -103,6 +103,7 @@
           kornia = callPackage ./packages/kornia { };
           lpips = callPackage ./packages/lpips { };
           ffmpy = callPackage ./packages/ffmpy { };
+          shap = callPackage ./packages/shap { };
           analytics-python = callPackage ./packages/analytics-python { };
           markdown-it-py = callPackage ./packages/markdown-it-py { };
           gradio = callPackage ./packages/gradio { };
