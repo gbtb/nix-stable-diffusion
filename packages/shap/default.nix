@@ -1,6 +1,6 @@
 { lib
 , buildPythonPackage
-, fetchFromGitHub
+, fetchPypi
 , writeText
 , isPy27
 , pytestCheckHook
@@ -23,6 +23,7 @@
 , lime
 , cloudpickle
 , ipython
+, packaging
 }:
 
 buildPythonPackage rec {
@@ -32,7 +33,7 @@ buildPythonPackage rec {
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "sha256-rYVWQ3VRvIObSQPwDRsxhTOGOKNkYkLtiHzVwoB3iJ0=";
+    sha256 = "sha256-pJ6k1lqtvIRaaV+j1+oL38jJKLjiE7D+7fWGit5LPKU=";
   };
 
   propagatedBuildInputs = [
@@ -44,6 +45,7 @@ buildPythonPackage rec {
     slicer
     numba
     cloudpickle
+    packaging
   ];
 
   passthru.optional-dependencies = {
