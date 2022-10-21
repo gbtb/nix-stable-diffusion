@@ -179,8 +179,6 @@
 
                 export NIXPKGS_ALLOW_UNFREE=1
                 export LD_LIBRARY_PATH=${lapack}/lib:${blas}/lib
-
-                fish
               '';
             });
             default = diffusion-amd;
