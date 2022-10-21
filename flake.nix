@@ -35,6 +35,7 @@
         markdown-it-py
         shap
         gradio
+        fonts
 
         albumentations
         opencv4
@@ -104,6 +105,7 @@
           lpips = callPackage ./packages/lpips { };
           ffmpy = callPackage ./packages/ffmpy { };
           shap = callPackage ./packages/shap { };
+          fonts = callPackage ./packages/fonts { };
           analytics-python = callPackage ./packages/analytics-python { };
           markdown-it-py = callPackage ./packages/markdown-it-py { };
           gradio = callPackage ./packages/gradio { };
