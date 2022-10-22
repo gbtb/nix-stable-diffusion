@@ -6,8 +6,12 @@
     nixpkgs = {
       url = "github:NixOS/nixpkgs?rev=fd54651f5ffb4a36e8463e0c327a78442b26cbe7";
     };
+    stable-diffusion-repo = {
+      url = "github:CompVis/stable-diffusion?rev=69ae4b35e0a0f6ee1af8bb9a5d0016ccb27e36dc";
+      flake = false;
+    };
   };
-  outputs = { self, nixpkgs, nixlib }@inputs:
+  outputs = { self, nixpkgs, nixlib, stable-diffusion-repo }@inputs:
     let
       nixlib = inputs.nixlib.outputs.lib;
       supportedSystems = [ "x86_64-linux" ];
@@ -114,6 +118,7 @@
           analytics-python = callPackage ./packages/analytics-python { };
           markdown-it-py = callPackage ./packages/markdown-it-py { };
           gradio = callPackage ./packages/gradio { };
+          hatch-requirements-txt = callPackage ./packages/hatch-requirements-txt { };
           torch-fidelity = callPackage ./packages/torch-fidelity { };
           resize-right = callPackage ./packages/resize-right { };
           torchdiffeq = callPackage ./packages/torchdiffeq { };

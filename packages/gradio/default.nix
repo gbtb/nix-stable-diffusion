@@ -36,22 +36,31 @@
 , scikitimage
 , shap
 , ipython
+, hatchling
+, hatch-requirements-txt
+, hatch-fancy-pypi-readme
 , pytestCheckHook
 , websockets
 }:
 
 buildPythonPackage rec {
   pname = "gradio";
-  version = "3.3";
+  version = "3.5";
   disabled = pythonOlder "3.7";
+  format = "pyproject";
 
   # We use the Pypi release, as it provides prebuild webui assets,
   # and its releases are also more frequent than github tags
   src = fetchPypi {
     inherit pname version;
-    sha256 = "sha256-mJojLaqTM5C6ZI+FTe/1J6yV8+GccgpwlgIMUQtJsC8=";
+    sha256 = "sha256-8MmpH2N1twrPGHS+HBLDWRtpg2Gd1rQzulbOEDr3rNQ=";
   };
 
+  nativeBuildInputs = [
+    hatchling
+    hatch-requirements-txt
+    hatch-fancy-pypi-readme
+  ];
   propagatedBuildInputs = [
     analytics-python
     aiohttp
