@@ -13,8 +13,8 @@ Flake for running SD on NixOS
     1. `.#invokeai.default` builds shell which overrides bare minimum required for SD to run
     1. `.#invokeai.amd` builds shell which overrides torch packages with ROCM-enabled bin versions
     1. `.#invokeai.nvidia` builds shell with overlay explicitly setting `cudaSupport = true` for torch
-1. Inside InvokeAI's directory, run `python scripts/preload_models.py` to preload models
-1. Place SD weights into `models/ldm/stable-diffusion-v1/model.ckpt`
+1. Inside InvokeAI's directory, run `python scripts/preload_models.py` to preload models (doesn't include SD weights)
+1. Obtain and place SD weights into `models/ldm/stable-diffusion-v1/model.ckpt`
 1. Run CLI with `python scripts/invoke.py` or GUI with `python scripts/invoke.py --web`
 1. For more detailed instructions consult https://invoke-ai.github.io/InvokeAI/installation/INSTALL_LINUX/
 
