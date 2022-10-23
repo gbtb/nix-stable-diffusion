@@ -10,6 +10,10 @@
       url = "github:CompVis/stable-diffusion?rev=69ae4b35e0a0f6ee1af8bb9a5d0016ccb27e36dc";
       flake = false;
     };
+    #codeformer-repo = {
+    #  url = "github:sczhou/CodeFormer?rev=c5b4593074ba6214284d6acd5f1719b6c5d739af";
+    #  flake = false;
+    #};
   };
   outputs = { self, nixpkgs, nixlib, stable-diffusion-repo }@inputs:
     let
@@ -43,6 +47,7 @@
         font-roboto
         piexif
         websockets
+        codeformer
 
         albumentations
         opencv4
@@ -108,6 +113,7 @@
           basicsr = rmCallPackage ./packages/basicsr { opencv-python = self.opencv4; };
           facexlib = rmCallPackage ./packages/facexlib { opencv-python = self.opencv4; };
           realesrgan = rmCallPackage ./packages/realesrgan { opencv-python = self.opencv4; };
+          codeformer = callPackage ./packages/codeformer { opencv-python = self.opencv4; };
           filterpy = callPackage ./packages/filterpy { };
           kornia = callPackage ./packages/kornia { };
           lpips = callPackage ./packages/lpips { };
