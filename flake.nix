@@ -16,35 +16,14 @@
       nixlib = inputs.nixlib.outputs.lib;
       supportedSystems = [ "x86_64-linux" ];
       forAll = nixlib.genAttrs supportedSystems;
-      requirements = pkgs: with pkgs; with pkgs.python3.pkgs; [
+      requirements = { pkgs, webui ? false }: with pkgs; with pkgs.python3.pkgs; [
         python3
 
         torch
         torchvision
         numpy
 
-        addict
-        future
-        lmdb
-        pyyaml
-        scikitimage
-        tqdm
-        yapf
-        gdown
-        lpips
-        fastapi
-        lark
-        analytics-python
-        ffmpy
-        markdown-it-py
-        shap
-        gradio
-        fonts
-        font-roboto
-        piexif
-        websockets
-        codeformer
-
+        # TODO: split SD and InvokeAI deps
         albumentations
         opencv4
         pudb
@@ -72,6 +51,29 @@
         clip
         k-diffusion
         gfpgan
+      ] ++ nixlib.optional webui [
+        addict
+        future
+        lmdb
+        pyyaml
+        scikitimage
+        tqdm
+        yapf
+        gdown
+        lpips
+        fastapi
+        lark
+        analytics-python
+        ffmpy
+        markdown-it-py
+        shap
+        gradio
+        fonts
+        font-roboto
+        piexif
+        websockets
+        codeformer
+        blip
       ];
       overlay_default = nixpkgs: pythonPackages:
         {
@@ -121,6 +123,9 @@
           markdown-it-py = callPackage ./packages/markdown-it-py { };
           gradio = callPackage ./packages/gradio { };
           hatch-requirements-txt = callPackage ./packages/hatch-requirements-txt { };
+          timm = callPackage ./packages/timm { };
+          blip = callPackage ./packages/blip { };
+          fairscale = callPackage ./packages/fairscale { };
           torch-fidelity = callPackage ./packages/torch-fidelity { };
           resize-right = callPackage ./packages/resize-right { };
           torchdiffeq = callPackage ./packages/torchdiffeq { };
@@ -159,68 +164,98 @@
         };
     in
     {
-
       devShells = forAll
         (system:
           let
-            nixpkgs_ = import inputs.nixpkgs {
-              inherit system;
-              config.allowUnfree = true; #both CUDA and MKL are unfree
-              overlays = [
-                (final: prev: {
-                  python3 = prev.python3.override {
-                    packageOverrides =
-                      python-self: python-super:
-                      (overlay_default prev python-super) //
-                      (overlay_amd prev python-super) //
-                      (overlay_pynixify python-self);
-                  };
-                })
-              ];
-            };
-            nixpkgs_nvidia = import inputs.nixpkgs {
-              inherit system;
-              config.allowUnfree = true; #CUDA is unfree
-              overlays = [
-                (final: prev: {
-                  python3 = prev.python3.override {
-                    packageOverrides =
-                      python-self: python-super:
-                      (overlay_default prev python-super) //
-                      (overlay_nvidia prev python-super) //
-                      (overlay_pynixify python-self);
-                  };
-                })
-              ];
-            };
+            mkShell = inputs.nixpkgs.legacyPackages.${system}.mkShell;
+            nixpkgs_ = { amd ? false, nvidia ? false, webui ? false }:
+              import inputs.nixpkgs {
+                inherit system;
+                config.allowUnfree = nvidia; #CUDA is unfree.
+                overlays = [
+                  (final: prev:
+                    let optional = nixlib.optionalAttrs; in
+                    {
+                      python3 = prev.python3.override {
+                        packageOverrides =
+                          python-self: python-super:
+                          (overlay_default prev python-super) //
+                          optional amd (overlay_amd prev python-super) //
+                          optional nvidia (overlay_amd prev python-super) //
+                          (overlay_pynixify python-self);
+                      };
+                    })
+                ];
+              };
           in
           rec {
-            invokeai = {
-              default = nixpkgs_amd.mkShell
-                ({
-                  name = "invokeai";
-                  propagatedBuildInputs = requirements nixpkgs_;
-                  shellHook = ''
-                    cd InvokeAI
-                  '';
-                });
-              amd = nixpkgs_amd.mkShell
-                ({
-                  name = "invokeai.amd";
-                  propagatedBuildInputs = requirements nixpkgs_amd;
-                  shellHook = ''
-                    cd InvokeAI
-                  '';
-                });
-              nvidia = nixpkgs_nvidia.mkShell
-                ({
-                  name = "invokeai.nvidia";
-                  propagatedBuildInputs = requirements nixpkgs_nvidia;
-                  shellHook = ''
-                    cd InvokeAI
-                  '';
-                });
-            };
+            invokeai =
+              let
+                shellHook = ''
+                  cd InvokeAI
+                '';
+              in
+              {
+                default = mkShell
+                  ({
+                    inherit shellHook;
+                    name = "invokeai";
+                    propagatedBuildInputs = requirements { pkgs = (nixpkgs_ { }); };
+                  });
+                amd = mkShell
+                  ({
+                    inherit shellHook;
+                    name = "invokeai.amd";
+                    propagatedBuildInputs = requirements { pkgs = (nixpkgs_ { amd = true; }); };
+                  });
+                nvidia = mkShell
+                  ({
+                    inherit shellHook;
+                    name = "invokeai.nvidia";
+                    propagatedBuildInputs = requirements { pkgs = (nixpkgs_ { nvidia = true; }); };
+                  });
+              };
+            webui =
+              let
+                nixpkgs = { pkgs = (nixpkgs_ { amd = true; }); webui = true; };
+                submodel = pkg: nixpkgs.pkgs.python3.pkgs.${pkg} + "/lib/python3.10/site-packages";
+                taming-transformers = submodel "taming-transformers-rom1504";
+                k_diffusion = submodel "k-diffusion";
+                codeformer = (submodel "codeformer") + "/codeformer";
+                blip = (submodel "blip") + "/blip";
+                    shellHook = ''
+                      cd stable-diffusion-webui
+                      git reset --hard HEAD
+                      rm -rf repositories/
+                      mkdir repositories
+                      ln -s ${inputs.stable-diffusion-repo}/ repositories/stable-diffusion
+                      substituteInPlace modules/paths.py \
+                        --subst-var-by taming_transformers ${taming-transformers} \
+                        --subst-var-by k_diffusion ${k_diffusion} \
+                        --subst-var-by codeformer ${codeformer} \
+                        --subst-var-by blip ${blip}
+                    '';
+              in
+              {
+                default = mkShell
+                  ({
+                    inherit shellHook;
+                    name = "webui";
+                    propagatedBuildInputs = requirements { pkgs = (nixpkgs_ { }); webui = true; };
+                  });
+                amd = mkShell
+                  ({
+                    inherit shellHook;
+                    name = "webui.amd";
+                    propagatedBuildInputs = requirements { pkgs = (nixpkgs_ { amd = true; }); webui = true; };
+                  });
+                nvidia = mkShell
+                  ({
+                    inherit shellHook;
+                    name = "webui.nvidia";
+                    propagatedBuildInputs = requirements { pkgs = (nixpkgs_ { nvidia = true; }); webui = true; };
+                  });
+              };
             default = invokeai.amd;
           });
     };
