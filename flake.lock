@@ -34,7 +34,25 @@
     "root": {
       "inputs": {
         "nixlib": "nixlib",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "stable-diffusion-repo": "stable-diffusion-repo"
+      }
+    },
+    "stable-diffusion-repo": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1661187475,
+        "narHash": "sha256-3YkSUATD/73nJFm4os3ZyNU8koabGB/6iR0XbTUQmVY=",
+        "owner": "CompVis",
+        "repo": "stable-diffusion",
+        "rev": "69ae4b35e0a0f6ee1af8bb9a5d0016ccb27e36dc",
+        "type": "github"
+      },
+      "original": {
+        "owner": "CompVis",
+        "repo": "stable-diffusion",
+        "rev": "69ae4b35e0a0f6ee1af8bb9a5d0016ccb27e36dc",
+        "type": "github"
       }
     }
   },

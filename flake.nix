@@ -6,19 +6,24 @@
     nixpkgs = {
       url = "github:NixOS/nixpkgs?rev=fd54651f5ffb4a36e8463e0c327a78442b26cbe7";
     };
+    stable-diffusion-repo = {
+      url = "github:CompVis/stable-diffusion?rev=69ae4b35e0a0f6ee1af8bb9a5d0016ccb27e36dc";
+      flake = false;
+    };
   };
-  outputs = { self, nixpkgs, nixlib }@inputs:
+  outputs = { self, nixpkgs, nixlib, stable-diffusion-repo }@inputs:
     let
       nixlib = inputs.nixlib.outputs.lib;
       supportedSystems = [ "x86_64-linux" ];
       forAll = nixlib.genAttrs supportedSystems;
-      requirements = pkgs: with pkgs; with pkgs.python3.pkgs; [
+      requirementsFor = { pkgs, webui ? false }: with pkgs; with pkgs.python3.pkgs; [
         python3
 
         torch
         torchvision
         numpy
 
+        # TODO: split SD and InvokeAI deps
         albumentations
         opencv4
         pudb
@@ -46,7 +51,29 @@
         clip
         k-diffusion
         gfpgan
-
+      ] ++ nixlib.optional webui [
+        addict
+        future
+        lmdb
+        pyyaml
+        scikitimage
+        tqdm
+        yapf
+        gdown
+        lpips
+        fastapi
+        lark
+        analytics-python
+        ffmpy
+        markdown-it-py
+        shap
+        gradio
+        fonts
+        font-roboto
+        piexif
+        websockets
+        codeformer
+        blip
       ];
       overlay_default = nixpkgs: pythonPackages:
         {
@@ -84,8 +111,21 @@
           basicsr = rmCallPackage ./packages/basicsr { opencv-python = self.opencv4; };
           facexlib = rmCallPackage ./packages/facexlib { opencv-python = self.opencv4; };
           realesrgan = rmCallPackage ./packages/realesrgan { opencv-python = self.opencv4; };
+          codeformer = callPackage ./packages/codeformer { opencv-python = self.opencv4; };
           filterpy = callPackage ./packages/filterpy { };
           kornia = callPackage ./packages/kornia { };
+          lpips = callPackage ./packages/lpips { };
+          ffmpy = callPackage ./packages/ffmpy { };
+          shap = callPackage ./packages/shap { };
+          fonts = callPackage ./packages/fonts { };
+          font-roboto = callPackage ./packages/font-roboto { };
+          analytics-python = callPackage ./packages/analytics-python { };
+          markdown-it-py = callPackage ./packages/markdown-it-py { };
+          gradio = callPackage ./packages/gradio { };
+          hatch-requirements-txt = callPackage ./packages/hatch-requirements-txt { };
+          timm = callPackage ./packages/timm { };
+          blip = callPackage ./packages/blip { };
+          fairscale = callPackage ./packages/fairscale { };
           torch-fidelity = callPackage ./packages/torch-fidelity { };
           resize-right = callPackage ./packages/resize-right { };
           torchdiffeq = callPackage ./packages/torchdiffeq { };
@@ -124,80 +164,101 @@
         };
     in
     {
-
       devShells = forAll
         (system:
           let
-            nixpkgs_ = import inputs.nixpkgs {
-              inherit system;
-              overlays = [
-                (final: prev: {
-                  python3 = prev.python3.override {
-                    packageOverrides =
-                      python-self: python-super:
-                      (overlay_default prev python-super) //
-                      (overlay_pynixify python-self);
-                  };
-                })
-              ];
-            };
-            nixpkgs_amd = import inputs.nixpkgs {
-              inherit system;
-              overlays = [
-                (final: prev: {
-                  python3 = prev.python3.override {
-                    packageOverrides =
-                      python-self: python-super:
-                      (overlay_default prev python-super) //
-                      (overlay_amd prev python-super) //
-                      (overlay_pynixify python-self);
-                  };
-                })
-              ];
-            };
-            nixpkgs_nvidia = import inputs.nixpkgs {
-              inherit system;
-              config.allowUnfree = true; #CUDA is unfree
-              overlays = [
-                (final: prev: {
-                  python3 = prev.python3.override {
-                    packageOverrides =
-                      python-self: python-super:
-                      (overlay_default prev python-super) //
-                      (overlay_nvidia prev python-super) //
-                      (overlay_pynixify python-self);
-                  };
-                })
-              ];
-            };
+            mkShell = inputs.nixpkgs.legacyPackages.${system}.mkShell;
+            nixpkgs_ = { amd ? false, nvidia ? false, webui ? false }:
+              import inputs.nixpkgs {
+                inherit system;
+                config.allowUnfree = nvidia; #CUDA is unfree.
+                overlays = [
+                  (final: prev:
+                    let optional = nixlib.optionalAttrs; in
+                    {
+                      python3 = prev.python3.override {
+                        packageOverrides =
+                          python-self: python-super:
+                          (overlay_default prev python-super) //
+                          optional amd (overlay_amd prev python-super) //
+                          optional nvidia (overlay_amd prev python-super) //
+                          (overlay_pynixify python-self);
+                      };
+                    })
+                ];
+              };
           in
           rec {
-            invokeai = {
-              default = nixpkgs_amd.mkShell
-                ({
-                  name = "invokeai";
-                  propagatedBuildInputs = requirements nixpkgs_;
-                  shellHook = ''
-                    cd InvokeAI
+            invokeai =
+              let
+                shellHook = ''
+                  cd InvokeAI
+                '';
+              in
+              {
+                default = mkShell
+                  ({
+                    inherit shellHook;
+                    name = "invokeai";
+                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { }); };
+                  });
+                amd = mkShell
+                  ({
+                    inherit shellHook;
+                    name = "invokeai.amd";
+                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { amd = true; }); };
+                  });
+                nvidia = mkShell
+                  ({
+                    inherit shellHook;
+                    name = "invokeai.nvidia";
+                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { nvidia = true; }); };
+                  });
+              };
+            webui =
+              let
+                shellHookFor = nixpkgs:
+                  let
+                    submodel = pkg: nixpkgs.pkgs.python3.pkgs.${pkg} + "/lib/python3.10/site-packages";
+                    taming-transformers = submodel "taming-transformers-rom1504";
+                    k_diffusion = submodel "k-diffusion";
+                    codeformer = (submodel "codeformer") + "/codeformer";
+                    blip = (submodel "blip") + "/blip";
+                  in
+                  ''
+                    cd stable-diffusion-webui
+                    git reset --hard HEAD
+                    git apply ${./webui.patch}
+                    rm -rf repositories/
+                    mkdir repositories
+                    ln -s ${inputs.stable-diffusion-repo}/ repositories/stable-diffusion
+                    substituteInPlace modules/paths.py \
+                      --subst-var-by taming_transformers ${taming-transformers} \
+                      --subst-var-by k_diffusion ${k_diffusion} \
+                      --subst-var-by codeformer ${codeformer} \
+                      --subst-var-by blip ${blip}
                   '';
-                });
-              amd = nixpkgs_amd.mkShell
-                ({
-                  name = "invokeai.amd";
-                  propagatedBuildInputs = requirements nixpkgs_amd;
-                  shellHook = ''
-                    cd InvokeAI
-                  '';
-                });
-              nvidia = nixpkgs_nvidia.mkShell
-                ({
-                  name = "invokeai.nvidia";
-                  propagatedBuildInputs = requirements nixpkgs_nvidia;
-                  shellHook = ''
-                    cd InvokeAI
-                  '';
-                });
-            };
+              in
+              {
+                default = mkShell
+                  ({
+                    shellHook = shellHookFor (nixpkgs_ { });
+                    name = "webui";
+                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { }); webui = true; };
+                  });
+                amd = mkShell
+                  ({
+                    shellHook = shellHookFor (nixpkgs_ { amd = true; });
+                    name = "webui.amd";
+                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { amd = true; }); webui = true; };
+                  });
+                nvidia = mkShell
+                  ({
+                    shellHook = shellHookFor (nixpkgs_ { nvidia = true; });
+                    name = "webui.nvidia";
+                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { nvidia = true; }); webui = true; };
+                  });
+              };
             default = invokeai.amd;
           });
     };
