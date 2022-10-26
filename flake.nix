@@ -16,7 +16,7 @@
       nixlib = inputs.nixlib.outputs.lib;
       supportedSystems = [ "x86_64-linux" ];
       forAll = nixlib.genAttrs supportedSystems;
-      requirements = { pkgs, webui ? false }: with pkgs; with pkgs.python3.pkgs; [
+      requirementsFor = { pkgs, webui ? false }: with pkgs; with pkgs.python3.pkgs; [
         python3
 
         torch
@@ -200,61 +200,63 @@
                   ({
                     inherit shellHook;
                     name = "invokeai";
-                    propagatedBuildInputs = requirements { pkgs = (nixpkgs_ { }); };
+                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { }); };
                   });
                 amd = mkShell
                   ({
                     inherit shellHook;
                     name = "invokeai.amd";
-                    propagatedBuildInputs = requirements { pkgs = (nixpkgs_ { amd = true; }); };
+                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { amd = true; }); };
                   });
                 nvidia = mkShell
                   ({
                     inherit shellHook;
                     name = "invokeai.nvidia";
-                    propagatedBuildInputs = requirements { pkgs = (nixpkgs_ { nvidia = true; }); };
+                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { nvidia = true; }); };
                   });
               };
             webui =
               let
-                nixpkgs = { pkgs = (nixpkgs_ { amd = true; }); webui = true; };
-                submodel = pkg: nixpkgs.pkgs.python3.pkgs.${pkg} + "/lib/python3.10/site-packages";
-                taming-transformers = submodel "taming-transformers-rom1504";
-                k_diffusion = submodel "k-diffusion";
-                codeformer = (submodel "codeformer") + "/codeformer";
-                blip = (submodel "blip") + "/blip";
-                    shellHook = ''
-                      cd stable-diffusion-webui
-                      git reset --hard HEAD
-                      git apply ${./webui.patch}
-                      rm -rf repositories/
-                      mkdir repositories
-                      ln -s ${inputs.stable-diffusion-repo}/ repositories/stable-diffusion
-                      substituteInPlace modules/paths.py \
-                        --subst-var-by taming_transformers ${taming-transformers} \
-                        --subst-var-by k_diffusion ${k_diffusion} \
-                        --subst-var-by codeformer ${codeformer} \
-                        --subst-var-by blip ${blip}
-                    '';
+                shellHookFor = nixpkgs:
+                  let
+                    submodel = pkg: nixpkgs.pkgs.python3.pkgs.${pkg} + "/lib/python3.10/site-packages";
+                    taming-transformers = submodel "taming-transformers-rom1504";
+                    k_diffusion = submodel "k-diffusion";
+                    codeformer = (submodel "codeformer") + "/codeformer";
+                    blip = (submodel "blip") + "/blip";
+                  in
+                  ''
+                    cd stable-diffusion-webui
+                    git reset --hard HEAD
+                    git apply ${./webui.patch}
+                    rm -rf repositories/
+                    mkdir repositories
+                    ln -s ${inputs.stable-diffusion-repo}/ repositories/stable-diffusion
+                    substituteInPlace modules/paths.py \
+                      --subst-var-by taming_transformers ${taming-transformers} \
+                      --subst-var-by k_diffusion ${k_diffusion} \
+                      --subst-var-by codeformer ${codeformer} \
+                      --subst-var-by blip ${blip}
+                  '';
               in
               {
                 default = mkShell
                   ({
-                    inherit shellHook;
+                    shellHook = shellHookFor (nixpkgs_ { });
                     name = "webui";
-                    propagatedBuildInputs = requirements { pkgs = (nixpkgs_ { }); webui = true; };
+                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { }); webui = true; };
                   });
                 amd = mkShell
                   ({
-                    inherit shellHook;
+                    shellHook = shellHookFor (nixpkgs_ { amd = true; });
                     name = "webui.amd";
-                    propagatedBuildInputs = requirements { pkgs = (nixpkgs_ { amd = true; }); webui = true; };
+                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { amd = true; }); webui = true; };
                   });
                 nvidia = mkShell
                   ({
-                    inherit shellHook;
+                    shellHook = shellHookFor (nixpkgs_ { nvidia = true; });
                     name = "webui.nvidia";
-                    propagatedBuildInputs = requirements { pkgs = (nixpkgs_ { nvidia = true; }); webui = true; };
+                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { nvidia = true; }); webui = true; };
                   });
               };
             default = invokeai.amd;
