@@ -40,8 +40,8 @@
         einops
         taming-transformers-rom1504
         torch-fidelity
-        transformers
         torchmetrics
+        transformers
         flask
         flask-socketio
         flask-cors
@@ -91,6 +91,17 @@
           });
           scikit-image = pythonPackages.scikitimage;
         };
+      overlay_webui = nixpkgs: pythonPackages:
+        {
+          transformers = pythonPackages.transformers.overrideAttrs (old: {
+            src = nixpkgs.fetchFromGitHub {
+              owner = "huggingface";
+              repo = "transformers";
+              rev = "refs/tags/v4.19.2";
+              hash = "sha256-9r/1vW7Rhv9+Swxdzu5PTnlQlT8ofJeZamHf5X4ql8w=";
+            };
+          });
+        };
       overlay_pynixify = self:
         let
           rm = d: d.overrideAttrs (old: {
@@ -101,6 +112,7 @@
           rmCallPackage = path: args: rm (callPackage path args);
         in
         rec        {
+
 
           pydeprecate = callPackage ./packages/pydeprecate { };
           taming-transformers-rom1504 =
@@ -182,6 +194,7 @@
                           (overlay_default prev python-super) //
                           optional amd (overlay_amd prev python-super) //
                           optional nvidia (overlay_amd prev python-super) //
+                          optional webui (overlay_webui prev python-super) //
                           (overlay_pynixify python-self);
                       };
                     })
@@ -241,23 +254,32 @@
               in
               {
                 default = mkShell
-                  ({
-                    shellHook = shellHookFor (nixpkgs_ { });
-                    name = "webui";
-                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { }); webui = true; };
-                  });
+                  (
+                    let args = { pkgs = (nixpkgs_ { webui = true; }); webui = true; }; in
+                    {
+                      shellHook = shellHookFor args.pkgs;
+                      name = "webui";
+                      propagatedBuildInputs = requirementsFor args.pkgs;
+                    }
+                  );
                 amd = mkShell
-                  ({
-                    shellHook = shellHookFor (nixpkgs_ { amd = true; });
-                    name = "webui.amd";
-                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { amd = true; }); webui = true; };
-                  });
+                  (
+                    let args = { pkgs = (nixpkgs_ { webui = true; amd = true; }); webui = true; }; in
+                    {
+                      shellHook = shellHookFor args.pkgs;
+                      name = "webui.amd";
+                      propagatedBuildInputs = requirementsFor args;
+                    }
+                  );
                 nvidia = mkShell
-                  ({
-                    shellHook = shellHookFor (nixpkgs_ { nvidia = true; });
-                    name = "webui.nvidia";
-                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { nvidia = true; }); webui = true; };
-                  });
+                  (
+                    let args = { pkgs = (nixpkgs_ { webui = true; nvidia = true; }); webui = true; }; in
+                    {
+                      shellHook = shellHookFor args.pkgs;
+                      name = "webui.nvidia";
+                      propagatedBuildInputs = requirementsFor args;
+                    }
+                  );
               };
             default = invokeai.amd;
           });
