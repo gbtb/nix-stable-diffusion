@@ -23,7 +23,6 @@
         torchvision
         numpy
 
-        # TODO: split SD and InvokeAI deps
         albumentations
         opencv4
         pudb
@@ -32,26 +31,30 @@
         pytorch-lightning
         protobuf3_20
         omegaconf
-        realesrgan
         test-tube
         streamlit
-        send2trash
-        pillow
         einops
         taming-transformers-rom1504
         torch-fidelity
         torchmetrics
         transformers
+        kornia
+        k-diffusion
+
+        # following packages not needed for vanilla SD but used by both UIs
+        realesrgan
+        pillow
+      ] 
+      ++ nixlib.optional (!webui) [
+        send2trash
         flask
         flask-socketio
         flask-cors
         dependency-injector
-        eventlet
-        kornia
-        clip
-        k-diffusion
         gfpgan
-      ] ++ nixlib.optional webui [
+        eventlet
+      ]
+      ++ nixlib.optional webui [
         addict
         future
         lmdb
