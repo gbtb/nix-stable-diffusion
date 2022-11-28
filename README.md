@@ -46,7 +46,7 @@ Current versions:
 - InvokeAI 2.0.2
 - stable-diffusion-webui 27.10.2022
 
-I have no intention to keep up with development pace of these apps, especially the automatic's fork :) . However, I will ocasionally update at least InvokeAI flake. Considering versioning, I will try to follow semver with respect to submodules as well, which means major releases for submodule = major release for this flake. 
+I have no intention to keep up with development pace of these apps, especially the automatic's fork :) . However, I will ocasionally update at least InvokeAI flake. Considering versioning, I will try to follow semver with respect to submodules as well, which means major version bump for submodule = major version bump for this flake. 
 
 ## Acknowledgements
 
