@@ -40,6 +40,14 @@ Flake for running SD on NixOS
 - [ ] May be this devShell should be itself turned into a package?
 - [x] Add additional flavors of SD ?
 
+## Updates and versioning
+
+Current versions:
+- InvokeAI 2.0.2
+- stable-diffusion-webui 27.10.2022
+
+I have no intention to keep up with development pace of these apps, especially the automatic's fork :) . However, I will ocasionally update at least InvokeAI flake. Considering versioning, I will try to follow semver with respect to submodules as well, which means major releases for submodule = major release for this flake. 
+
 ## Acknowledgements
 
 Many many thanks to https://github.com/cript0nauta/pynixify which generated all the boilerplate for missing python packages.  
