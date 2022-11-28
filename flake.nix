@@ -241,7 +241,8 @@
                   ''
                     cd stable-diffusion-webui
                     git reset --hard HEAD
-                    git apply ${./webui.patch}
+                    git config core.whitespace cr-at-eol
+                    git apply ${./webui.patch} 
                     rm -rf repositories/
                     mkdir repositories
                     ln -s ${inputs.stable-diffusion-repo}/ repositories/stable-diffusion
