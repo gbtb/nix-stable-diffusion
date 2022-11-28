@@ -44,7 +44,7 @@
         # following packages not needed for vanilla SD but used by both UIs
         realesrgan
         pillow
-      ] 
+      ]
       ++ nixlib.optional (!webui) [
         send2trash
         flask
@@ -53,6 +53,8 @@
         dependency-injector
         gfpgan
         eventlet
+        clipseg
+        getpass-asterisk
       ]
       ++ nixlib.optional webui [
         addict
@@ -109,7 +111,7 @@
         let
           rm = d: d.overrideAttrs (old: {
             nativeBuildInputs = old.nativeBuildInputs ++ [ self.pythonRelaxDepsHook ];
-            pythonRemoveDeps = [ "opencv-python-headless" "opencv-python" "tb-nightly" ];
+            pythonRemoveDeps = [ "opencv-python-headless" "opencv-python" "tb-nightly" "clip" ];
           });
           callPackage = self.callPackage;
           rmCallPackage = path: args: rm (callPackage path args);
@@ -127,6 +129,7 @@
           facexlib = rmCallPackage ./packages/facexlib { opencv-python = self.opencv4; };
           realesrgan = rmCallPackage ./packages/realesrgan { opencv-python = self.opencv4; };
           codeformer = callPackage ./packages/codeformer { opencv-python = self.opencv4; };
+          clipseg = rmCallPackage ./packages/clipseg { opencv-python = self.opencv4; };
           filterpy = callPackage ./packages/filterpy { };
           kornia = callPackage ./packages/kornia { };
           lpips = callPackage ./packages/lpips { };
@@ -149,6 +152,7 @@
           clip-anytorch = callPackage ./packages/clip-anytorch { };
           jsonmerge = callPackage ./packages/jsonmerge { };
           clean-fid = callPackage ./packages/clean-fid { };
+          getpass-asterisk = callPackage ./packages/getpass-asterisk { };
         };
       overlay_amd = nixpkgs: pythonPackages:
         rec {
