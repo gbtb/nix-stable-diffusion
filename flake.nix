@@ -23,7 +23,6 @@
         torchvision
         numpy
 
-        # TODO: split SD and InvokeAI deps
         albumentations
         opencv4
         pudb
@@ -32,26 +31,32 @@
         pytorch-lightning
         protobuf3_20
         omegaconf
-        realesrgan
         test-tube
         streamlit
-        send2trash
-        pillow
         einops
         taming-transformers-rom1504
         torch-fidelity
         torchmetrics
         transformers
+        kornia
+        k-diffusion
+
+        # following packages not needed for vanilla SD but used by both UIs
+        realesrgan
+        pillow
+      ]
+      ++ nixlib.optional (!webui) [
+        send2trash
         flask
         flask-socketio
         flask-cors
         dependency-injector
-        eventlet
-        kornia
-        clip
-        k-diffusion
         gfpgan
-      ] ++ nixlib.optional webui [
+        eventlet
+        clipseg
+        getpass-asterisk
+      ]
+      ++ nixlib.optional webui [
         addict
         future
         lmdb
@@ -106,7 +111,7 @@
         let
           rm = d: d.overrideAttrs (old: {
             nativeBuildInputs = old.nativeBuildInputs ++ [ self.pythonRelaxDepsHook ];
-            pythonRemoveDeps = [ "opencv-python-headless" "opencv-python" "tb-nightly" ];
+            pythonRemoveDeps = [ "opencv-python-headless" "opencv-python" "tb-nightly" "clip" ];
           });
           callPackage = self.callPackage;
           rmCallPackage = path: args: rm (callPackage path args);
@@ -124,6 +129,7 @@
           facexlib = rmCallPackage ./packages/facexlib { opencv-python = self.opencv4; };
           realesrgan = rmCallPackage ./packages/realesrgan { opencv-python = self.opencv4; };
           codeformer = callPackage ./packages/codeformer { opencv-python = self.opencv4; };
+          clipseg = rmCallPackage ./packages/clipseg { opencv-python = self.opencv4; };
           filterpy = callPackage ./packages/filterpy { };
           kornia = callPackage ./packages/kornia { };
           lpips = callPackage ./packages/lpips { };
@@ -146,6 +152,7 @@
           clip-anytorch = callPackage ./packages/clip-anytorch { };
           jsonmerge = callPackage ./packages/jsonmerge { };
           clean-fid = callPackage ./packages/clean-fid { };
+          getpass-asterisk = callPackage ./packages/getpass-asterisk { };
         };
       overlay_amd = nixpkgs: pythonPackages:
         rec {
