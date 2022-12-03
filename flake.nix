@@ -200,7 +200,7 @@
                           python-self: python-super:
                           (overlay_default prev python-super) //
                           optional amd (overlay_amd prev python-super) //
-                          optional nvidia (overlay_amd prev python-super) //
+                          optional nvidia (overlay_nvidia prev python-super) //
                           optional webui (overlay_webui prev python-super) //
                           (overlay_pynixify python-self);
                       };
