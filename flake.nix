@@ -177,9 +177,8 @@
         };
       overlay_nvidia = nixpkgs: pythonPackages:
         {
-          torch = pythonPackages.torch.override {
-            cudaSupport = true;
-          };
+          torch = pythonPackages.torch-bin;
+          torchvision = pythonPackages.torchvision-bin;
         };
     in
     {
