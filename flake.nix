@@ -4,7 +4,7 @@
   inputs = {
     nixlib.url = "github:nix-community/nixpkgs.lib";
     nixpkgs = {
-      url = "github:NixOS/nixpkgs?rev=fd54651f5ffb4a36e8463e0c327a78442b26cbe7";
+      url = "github:NixOS/nixpkgs"; #?rev=33919d25f0c873b0c73e2f8d0859fab3bd0d1b26";
     };
     stable-diffusion-repo = {
       url = "github:CompVis/stable-diffusion?rev=69ae4b35e0a0f6ee1af8bb9a5d0016ccb27e36dc";
@@ -90,10 +90,6 @@
             nativeBuildInputs = old.nativeBuildInputs ++ [ nixpkgs.python3Packages.pythonRelaxDepsHook ];
             pythonRelaxDeps = [ "protobuf" ];
           });
-          streamlit = nixpkgs.streamlit.overrideAttrs (old: {
-            nativeBuildInputs = old.nativeBuildInputs ++ [ nixpkgs.python3Packages.pythonRelaxDepsHook ];
-            pythonRelaxDeps = [ "protobuf" ];
-          });
           scikit-image = pythonPackages.scikitimage;
         };
       overlay_webui = nixpkgs: pythonPackages:
@@ -173,7 +169,6 @@
           torch = torch-bin;
           torchvision = torchvision-bin;
           #overriding because of https://github.com/NixOS/nixpkgs/issues/196653
-          opencv4 = pythonPackages.opencv4.override { openblas = nixpkgs.blas; };
         };
       overlay_nvidia = nixpkgs: pythonPackages:
         {
@@ -194,6 +189,10 @@
                   (final: prev:
                     let optional = nixlib.optionalAttrs; in
                     {
+                        streamlit = prev.streamlit.overrideAttrs (old: {
+                          nativeBuildInputs = old.nativeBuildInputs ++ [ prev.python3Packages.pythonRelaxDepsHook ];
+                          pythonRelaxDeps = [ "protobuf" ];
+                        });
                       python3 = prev.python3.override {
                         packageOverrides =
                           python-self: python-super:
