@@ -4,7 +4,7 @@
 
 { accelerate, buildPythonPackage, clip-anytorch, einops, fetchPypi, jsonmerge
 , kornia, lib, pillow, resize-right, scikit-image, scipy, torch, torchdiffeq
-, torchvision, tqdm, wandb, clean-fid }:
+, torchvision, tqdm, wandb, clean-fid, torchsde }:
 
 buildPythonPackage rec {
   pname = "k-diffusion";
@@ -28,6 +28,7 @@ buildPythonPackage rec {
     torch
     torchdiffeq
     torchvision
+    torchsde
     tqdm
     wandb
     clean-fid

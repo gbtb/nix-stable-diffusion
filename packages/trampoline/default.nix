@@ -13,7 +13,7 @@ buildPythonPackage rec {
     owner = "ferreum";
     repo = pname;
     rev = "6ff003ed89abc4b64587227d10a6a8ba48309a83";
-    sha256 = "";
+    sha256 = "sha256-1GK0MOF1uHhbT8qUQzr32B5HY8x3Nc0SvkjP0C21V6k=";
   };
 
   propagatedBuildInputs = [ ];

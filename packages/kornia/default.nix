@@ -6,11 +6,11 @@
 
 buildPythonPackage rec {
   pname = "kornia";
-  version = "0.6.8";
+  version = "0.6.10";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "0mlcnpqfd411hzn592lgz8pk3asdanks68ld1q1lzay0acjf1189";
+    sha256 = "0mlcapqfd411hzn592lgz8pk3asdanks68ld1q1lzay0acjf1189";
   };
 
   buildInputs = [ pytest-runner ];

@@ -52,7 +52,7 @@
         datasets
         click
         pypatchmatch
-        #torchsde
+        torchsde
         trampoline
         send2trash
         flask
