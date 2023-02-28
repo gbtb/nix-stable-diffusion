@@ -46,6 +46,14 @@
         pillow
       ]
       ++ nixlib.optional (!webui) [
+        npyscreen
+        huggingface-hub
+        dnspython
+        datasets
+        click
+        pypatchmatch
+        #torchsde
+        trampoline
         send2trash
         flask
         flask-socketio
@@ -149,6 +157,9 @@
           jsonmerge = callPackage ./packages/jsonmerge { };
           clean-fid = callPackage ./packages/clean-fid { };
           getpass-asterisk = callPackage ./packages/getpass-asterisk { };
+          pypatchmatch = callPackage ./packages/pypatchmatch { };
+          trampoline = callPackage ./packages/trampoline { };
+          torchsde = callPackage ./packages/torchsde { };
         };
       overlay_amd = nixpkgs: pythonPackages:
         rec {
