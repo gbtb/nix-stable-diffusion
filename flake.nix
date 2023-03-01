@@ -10,12 +10,15 @@
       url = "github:CompVis/stable-diffusion?rev=69ae4b35e0a0f6ee1af8bb9a5d0016ccb27e36dc";
       flake = false;
     };
+    invokeai-repo = {
+      url = "github:invoke-ai/InvokeAI?ref=v2.3.1.post2";
+      flake = false;
+    };
   };
-  outputs = { self, nixpkgs, nixlib, stable-diffusion-repo }@inputs:
+  outputs = { self, nixpkgs, nixlib, stable-diffusion-repo, invokeai-repo }@inputs:
     let
       nixlib = inputs.nixlib.outputs.lib;
-      supportedSystems = [ "x86_64-linux" ];
-      forAll = nixlib.genAttrs supportedSystems;
+      system = "x86_64-linux";
       requirementsFor = { pkgs, webui ? false }: with pkgs; with pkgs.python3.pkgs; [
         python3
 
@@ -40,6 +43,7 @@
         transformers
         kornia
         k-diffusion
+        diffusers
 
         # following packages not needed for vanilla SD but used by both UIs
         realesrgan
@@ -54,6 +58,7 @@
         pypatchmatch
         torchsde
         trampoline
+        compel
         send2trash
         flask
         flask-socketio
@@ -160,6 +165,8 @@
           pypatchmatch = callPackage ./packages/pypatchmatch { };
           trampoline = callPackage ./packages/trampoline { };
           torchsde = callPackage ./packages/torchsde { };
+          compel = callPackage ./packages/compel { };
+          diffusers = callPackage ./packages/diffusers { };
         };
       overlay_amd = nixpkgs: pythonPackages:
         rec {
@@ -187,117 +194,129 @@
           torchvision = pythonPackages.torchvision-bin;
         };
     in
+    let
+      mkShell = inputs.nixpkgs.legacyPackages.${system}.mkShell;
+      nixpkgs_ = { amd ? false, nvidia ? false, webui ? false }:
+        import inputs.nixpkgs {
+          inherit system;
+          config.allowUnfree = nvidia; #CUDA is unfree.
+          overlays = [
+            (final: prev:
+              let optional = nixlib.optionalAttrs; in
+              {
+                streamlit = prev.streamlit.overrideAttrs (old: {
+                  nativeBuildInputs = old.nativeBuildInputs ++ [ prev.python3Packages.pythonRelaxDepsHook ];
+                  pythonRelaxDeps = [ "protobuf" ];
+                });
+                python3 = prev.python3.override {
+                  packageOverrides =
+                    python-self: python-super:
+                    (overlay_default prev python-super) //
+                    optional amd (overlay_amd prev python-super) //
+                    optional nvidia (overlay_nvidia prev python-super) //
+                    optional webui (overlay_webui prev python-super) //
+                    (overlay_pynixify python-self);
+                };
+              })
+          ];
+        };
+    in
     {
-      devShells = forAll
-        (system:
-          let
-            mkShell = inputs.nixpkgs.legacyPackages.${system}.mkShell;
-            nixpkgs_ = { amd ? false, nvidia ? false, webui ? false }:
-              import inputs.nixpkgs {
-                inherit system;
-                config.allowUnfree = nvidia; #CUDA is unfree.
-                overlays = [
-                  (final: prev:
-                    let optional = nixlib.optionalAttrs; in
-                    {
-                        streamlit = prev.streamlit.overrideAttrs (old: {
-                          nativeBuildInputs = old.nativeBuildInputs ++ [ prev.python3Packages.pythonRelaxDepsHook ];
-                          pythonRelaxDeps = [ "protobuf" ];
-                        });
-                      python3 = prev.python3.override {
-                        packageOverrides =
-                          python-self: python-super:
-                          (overlay_default prev python-super) //
-                          optional amd (overlay_amd prev python-super) //
-                          optional nvidia (overlay_nvidia prev python-super) //
-                          optional webui (overlay_webui prev python-super) //
-                          (overlay_pynixify python-self);
-                      };
-                    })
-                ];
-              };
-          in
-          rec {
-            invokeai =
-              let
-                shellHook = ''
-                  cd InvokeAI
+      packages.${system} =
+        {
+          invokeai = {
+            amd = 
+              inputs.nixpkgs.legacyPackages.${system}.python3Packages.buildPythonApplication {
+                pname = "invokeai";
+                version = "2.3.1";
+                src = invokeai-repo;
+                format = "pyproject";
+                propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { amd = true; }); };
+            };
+          };
+        };
+      devShells.${system} =
+        rec {
+          invokeai =
+            let
+              shellHook = ''
+                cd InvokeAI
+              '';
+            in
+            {
+              default = mkShell
+                ({
+                  inherit shellHook;
+                  name = "invokeai";
+                  propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { }); };
+                });
+              amd = mkShell
+                ({
+                  inherit shellHook;
+                  name = "invokeai.amd";
+                  propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { amd = true; }); };
+                });
+              nvidia = mkShell
+                ({
+                  inherit shellHook;
+                  name = "invokeai.nvidia";
+                  propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { nvidia = true; }); };
+                });
+            };
+          webui =
+            let
+              shellHookFor = nixpkgs:
+                let
+                  submodel = pkg: nixpkgs.pkgs.python3.pkgs.${pkg} + "/lib/python3.10/site-packages";
+                  taming-transformers = submodel "taming-transformers-rom1504";
+                  k_diffusion = submodel "k-diffusion";
+                  codeformer = (submodel "codeformer") + "/codeformer";
+                  blip = (submodel "blip") + "/blip";
+                in
+                ''
+                  cd stable-diffusion-webui
+                  git reset --hard HEAD
+                  git apply ${./webui.patch}
+                  rm -rf repositories/
+                  mkdir repositories
+                  ln -s ${inputs.stable-diffusion-repo}/ repositories/stable-diffusion
+                  substituteInPlace modules/paths.py \
+                    --subst-var-by taming_transformers ${taming-transformers} \
+                    --subst-var-by k_diffusion ${k_diffusion} \
+                    --subst-var-by codeformer ${codeformer} \
+                    --subst-var-by blip ${blip}
                 '';
-              in
-              {
-                default = mkShell
-                  ({
-                    inherit shellHook;
-                    name = "invokeai";
-                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { }); };
-                  });
-                amd = mkShell
-                  ({
-                    inherit shellHook;
-                    name = "invokeai.amd";
-                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { amd = true; }); };
-                  });
-                nvidia = mkShell
-                  ({
-                    inherit shellHook;
-                    name = "invokeai.nvidia";
-                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { nvidia = true; }); };
-                  });
-              };
-            webui =
-              let
-                shellHookFor = nixpkgs:
-                  let
-                    submodel = pkg: nixpkgs.pkgs.python3.pkgs.${pkg} + "/lib/python3.10/site-packages";
-                    taming-transformers = submodel "taming-transformers-rom1504";
-                    k_diffusion = submodel "k-diffusion";
-                    codeformer = (submodel "codeformer") + "/codeformer";
-                    blip = (submodel "blip") + "/blip";
-                  in
-                  ''
-                    cd stable-diffusion-webui
-                    git reset --hard HEAD
-                    git apply ${./webui.patch}
-                    rm -rf repositories/
-                    mkdir repositories
-                    ln -s ${inputs.stable-diffusion-repo}/ repositories/stable-diffusion
-                    substituteInPlace modules/paths.py \
-                      --subst-var-by taming_transformers ${taming-transformers} \
-                      --subst-var-by k_diffusion ${k_diffusion} \
-                      --subst-var-by codeformer ${codeformer} \
-                      --subst-var-by blip ${blip}
-                  '';
-              in
-              {
-                default = mkShell
-                  (
-                    let args = { pkgs = (nixpkgs_ { webui = true; }); webui = true; }; in
-                    {
-                      shellHook = shellHookFor args.pkgs;
-                      name = "webui";
-                      propagatedBuildInputs = requirementsFor args.pkgs;
-                    }
-                  );
-                amd = mkShell
-                  (
-                    let args = { pkgs = (nixpkgs_ { webui = true; amd = true; }); webui = true; }; in
-                    {
-                      shellHook = shellHookFor args.pkgs;
-                      name = "webui.amd";
-                      propagatedBuildInputs = requirementsFor args;
-                    }
-                  );
-                nvidia = mkShell
-                  (
-                    let args = { pkgs = (nixpkgs_ { webui = true; nvidia = true; }); webui = true; }; in
-                    {
-                      shellHook = shellHookFor args.pkgs;
-                      name = "webui.nvidia";
-                      propagatedBuildInputs = requirementsFor args;
-                    }
-                  );
-              };
-            default = invokeai.amd;
-          });
+            in
+            {
+              default = mkShell
+                (
+                  let args = { pkgs = (nixpkgs_ { webui = true; }); webui = true; }; in
+                  {
+                    shellHook = shellHookFor args.pkgs;
+                    name = "webui";
+                    propagatedBuildInputs = requirementsFor args.pkgs;
+                  }
+                );
+              amd = mkShell
+                (
+                  let args = { pkgs = (nixpkgs_ { webui = true; amd = true; }); webui = true; }; in
+                  {
+                    shellHook = shellHookFor args.pkgs;
+                    name = "webui.amd";
+                    propagatedBuildInputs = requirementsFor args;
+                  }
+                );
+              nvidia = mkShell
+                (
+                  let args = { pkgs = (nixpkgs_ { webui = true; nvidia = true; }); webui = true; }; in
+                  {
+                    shellHook = shellHookFor args.pkgs;
+                    name = "webui.nvidia";
+                    propagatedBuildInputs = requirementsFor args;
+                  }
+                );
+            };
+          default = invokeai.amd;
+        };
     };
 }

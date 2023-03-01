@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "invokeai-repo": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1677475057,
+        "narHash": "sha256-REtyVcyRgspn1yYvB4vIHdOrPRZRNSSraepHik9MfgE=",
+        "owner": "invoke-ai",
+        "repo": "InvokeAI",
+        "rev": "650f4bb58ceca458bff1410f35cd6d6caad399c6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "invoke-ai",
+        "ref": "v2.3.1.post2",
+        "repo": "InvokeAI",
+        "type": "github"
+      }
+    },
     "nixlib": {
       "locked": {
         "lastModified": 1677373009,
@@ -32,6 +49,7 @@
     },
     "root": {
       "inputs": {
+        "invokeai-repo": "invokeai-repo",
         "nixlib": "nixlib",
         "nixpkgs": "nixpkgs",
         "stable-diffusion-repo": "stable-diffusion-repo"
