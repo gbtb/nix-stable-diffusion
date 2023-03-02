@@ -2,7 +2,7 @@
 # If you run pynixify again, the file will be either overwritten or
 # deleted, and you will lose the changes you made to it.
 
-{ boltons, buildPythonPackage, fetchPypi, lib, numpy, scipy, torch, fetchFromGitHub, pyparsing, transformers, diffusers }:
+{ buildPythonPackage, fetchPypi, lib, torch, fetchFromGitHub, pyparsing, transformers, diffusers }:
 
 buildPythonPackage rec {
   pname = "compel";

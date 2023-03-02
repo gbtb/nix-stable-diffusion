@@ -59,6 +59,7 @@
         torchsde
         trampoline
         compel
+        safetensors
         send2trash
         flask
         flask-socketio
@@ -167,6 +168,7 @@
           torchsde = callPackage ./packages/torchsde { };
           compel = callPackage ./packages/compel { };
           diffusers = callPackage ./packages/diffusers { };
+          safetensors = callPackage ./packages/safetensors { };
         };
       overlay_amd = nixpkgs: pythonPackages:
         rec {
@@ -223,15 +225,19 @@
     in
     {
       packages.${system} =
+        let nixpkgs = (nixpkgs_ { amd = true; });
+        in
         {
           invokeai = {
             amd = 
-              inputs.nixpkgs.legacyPackages.${system}.python3Packages.buildPythonApplication {
+              nixpkgs.python3Packages.buildPythonApplication {
                 pname = "invokeai";
                 version = "2.3.1";
                 src = invokeai-repo;
                 format = "pyproject";
-                propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { amd = true; }); };
+                propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; };
+                nativeBuildInputs = [ nixpkgs.python3Packages.pythonRelaxDepsHook ];
+                pythonRemoveDeps = [  "opencv-python" ];
             };
           };
         };
