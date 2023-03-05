@@ -32,10 +32,10 @@
         imageio
         imageio-ffmpeg
         pytorch-lightning
-        protobuf3_20
         omegaconf
         test-tube
         streamlit
+        protobuf
         einops
         taming-transformers-rom1504
         torch-fidelity
@@ -69,6 +69,7 @@
         eventlet
         clipseg
         getpass-asterisk
+        picklescan
       ]
       ++ nixlib.optional webui [
         addict
@@ -125,10 +126,40 @@
           });
           callPackage = self.callPackage;
           rmCallPackage = path: args: rm (callPackage path args);
+          mapCallPackage = pnames: builtins.listToAttrs (builtins.map (pname: { name = pname; value = (callPackage (./packages + "/${pname}") { }); }) pnames);
+          simplePackages = [
+            "filterpy"
+            "kornia"
+            "lpips"
+            "ffmpy"
+            "shap"
+            "fonts"
+            "font-roboto"
+            "analytics"
+            "markdown-it-py"
+            "gradio"
+            "hatch-requirements-txt"
+            "timm"
+            "blip"
+            "fairscale"
+            "torch-fidelity"
+            "resize-right"
+            "torchdiffeq"
+            "accelerate"
+            "clip-anytorch"
+            "jsonmerge"
+            "clean-fid"
+            "getpass-asterisk"
+            "pypatchmatch"
+            "trampoline"
+            "torchsde"
+            "compel"
+            "diffusers"
+            "safetensors"
+            "picklescan"
+          ];
         in
         rec        {
-
-
           pydeprecate = callPackage ./packages/pydeprecate { };
           taming-transformers-rom1504 =
             callPackage ./packages/taming-transformers-rom1504 { };
@@ -140,36 +171,8 @@
           realesrgan = rmCallPackage ./packages/realesrgan { opencv-python = self.opencv4; };
           codeformer = callPackage ./packages/codeformer { opencv-python = self.opencv4; };
           clipseg = rmCallPackage ./packages/clipseg { opencv-python = self.opencv4; };
-          filterpy = callPackage ./packages/filterpy { };
-          kornia = callPackage ./packages/kornia { };
-          lpips = callPackage ./packages/lpips { };
-          ffmpy = callPackage ./packages/ffmpy { };
-          shap = callPackage ./packages/shap { };
-          fonts = callPackage ./packages/fonts { };
-          font-roboto = callPackage ./packages/font-roboto { };
-          analytics-python = callPackage ./packages/analytics-python { };
-          markdown-it-py = callPackage ./packages/markdown-it-py { };
-          gradio = callPackage ./packages/gradio { };
-          hatch-requirements-txt = callPackage ./packages/hatch-requirements-txt { };
-          timm = callPackage ./packages/timm { };
-          blip = callPackage ./packages/blip { };
-          fairscale = callPackage ./packages/fairscale { };
-          torch-fidelity = callPackage ./packages/torch-fidelity { };
-          resize-right = callPackage ./packages/resize-right { };
-          torchdiffeq = callPackage ./packages/torchdiffeq { };
           k-diffusion = callPackage ./packages/k-diffusion { clean-fid = self.clean-fid; };
-          accelerate = callPackage ./packages/accelerate { };
-          clip-anytorch = callPackage ./packages/clip-anytorch { };
-          jsonmerge = callPackage ./packages/jsonmerge { };
-          clean-fid = callPackage ./packages/clean-fid { };
-          getpass-asterisk = callPackage ./packages/getpass-asterisk { };
-          pypatchmatch = callPackage ./packages/pypatchmatch { };
-          trampoline = callPackage ./packages/trampoline { };
-          torchsde = callPackage ./packages/torchsde { };
-          compel = callPackage ./packages/compel { };
-          diffusers = callPackage ./packages/diffusers { };
-          safetensors = callPackage ./packages/safetensors { };
-        };
+        } // mapCallPackage simplePackages;
       overlay_amd = nixpkgs: pythonPackages:
         rec {
           torch-bin = pythonPackages.torch-bin.overrideAttrs (old: {
@@ -204,11 +207,27 @@
           config.allowUnfree = nvidia; #CUDA is unfree.
           overlays = [
             (final: prev:
-              let optional = nixlib.optionalAttrs; in
+              let
+                optional = nixlib.optionalAttrs;
+                sl = (prev.streamlit.override({protobuf3 = prev.protobuf;}));
+                makePythonHook = args: final.makeSetupHook ({ passthru.provides.setupHook = true; } // args);
+                pythonRelaxDepsHook = prev.callPackage
+                  ({ wheel }:
+                    makePythonHook
+                      {
+                        name = "python-relax-deps-hook";
+                        propagatedBuildInputs = [ wheel ];
+                        substitutions = {
+                          pythonInterpreter = nixlib.getExe prev.python3Packages.python;
+                        };
+                      } ./python-relax-deps-hook.sh)
+                  { wheel = prev.python3.pkgs.wheel; };
+              in
               {
-                streamlit = prev.streamlit.overrideAttrs (old: {
-                  nativeBuildInputs = old.nativeBuildInputs ++ [ prev.python3Packages.pythonRelaxDepsHook ];
-                  pythonRelaxDeps = [ "protobuf" ];
+                inherit pythonRelaxDepsHook;
+                streamlit = sl.overrideAttrs (old: {
+                  nativeBuildInputs = old.nativeBuildInputs ++ [ pythonRelaxDepsHook ];
+                  pythonRemoveDeps = [ "protobuf" ];
                 });
                 python3 = prev.python3.override {
                   packageOverrides =
@@ -229,16 +248,20 @@
         in
         {
           invokeai = {
-            amd = 
-              nixpkgs.python3Packages.buildPythonApplication {
+            amd =
+              nixpkgs.python3.pkgs.buildPythonPackage {
                 pname = "invokeai";
                 version = "2.3.1";
                 src = invokeai-repo;
                 format = "pyproject";
                 propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; };
-                nativeBuildInputs = [ nixpkgs.python3Packages.pythonRelaxDepsHook ];
-                pythonRemoveDeps = [  "opencv-python" ];
-            };
+                nativeBuildInputs = [ nixpkgs.pkgs.pythonRelaxDepsHook ];
+                pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" ];
+                pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
+                /* preBuild = '' */
+                /*   sed -i "/opencv-python\|flaskwebgui\|pytorch-lightning\|socketio\|flask==2.1.3\|torch>=1.13.1\|torchvision\|pyreadline3/d" pyproject.toml */
+                /* ''; */
+              };
           };
         };
       devShells.${system} =
