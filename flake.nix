@@ -159,7 +159,7 @@
             "picklescan"
           ];
         in
-        rec        {
+        {
           pydeprecate = callPackage ./packages/pydeprecate { };
           taming-transformers-rom1504 =
             callPackage ./packages/taming-transformers-rom1504 { };
@@ -175,23 +175,23 @@
         } // mapCallPackage simplePackages;
       overlay_amd = nixpkgs: pythonPackages:
         rec {
+          #IMPORTANT: you can browse available wheels on the server, but only if you add trailing "/" - e.g. https://download.pytorch.org/whl/rocm5.2/
           torch-bin = pythonPackages.torch-bin.overrideAttrs (old: {
             src = nixpkgs.fetchurl {
-              name = "torch-1.12.1+rocm5.1.1-cp310-cp310-linux_x86_64.whl";
-              url = "https://download.pytorch.org/whl/rocm5.1.1/torch-1.12.1%2Brocm5.1.1-cp310-cp310-linux_x86_64.whl";
-              hash = "sha256-kNShDx88BZjRQhWgnsaJAT8hXnStVMU1ugPNMEJcgnA=";
+              name = "torch-1.13.1+rocm5.2-cp310-cp310-linux_x86_64.whl";
+              url = "https://download.pytorch.org/whl/rocm5.2/torch-1.13.1%2Brocm5.2-cp310-cp310-linux_x86_64.whl";
+              hash = "sha256-82hdCKwNjJUcw2f5vUsskkxdRRdmnEdoB3SKvNlmE28=";
             };
           });
           torchvision-bin = pythonPackages.torchvision-bin.overrideAttrs (old: {
             src = nixpkgs.fetchurl {
-              name = "torchvision-0.13.1+rocm5.1.1-cp310-cp310-linux_x86_64.whl";
-              url = "https://download.pytorch.org/whl/rocm5.1.1/torchvision-0.13.1%2Brocm5.1.1-cp310-cp310-linux_x86_64.whl";
-              hash = "sha256-mYk4+XNXU6rjpgWfKUDq+5fH/HNPQ5wkEtAgJUDN/Jg=";
+              name = "torchvision-0.14.1+rocm5.2-cp310-cp310-linux_x86_64.whl";
+              url = "https://download.pytorch.org/whl/rocm5.2/torchvision-0.14.1%2Brocm5.2-cp310-cp310-linux_x86_64.whl";
+              hash = "sha256-oBYG/K7bgkxu0UvmyS2U1ud2LkFQ/CarcxpEJ9xzMYQ=";
             };
           });
           torch = torch-bin;
           torchvision = torchvision-bin;
-          #overriding because of https://github.com/NixOS/nixpkgs/issues/196653
         };
       overlay_nvidia = nixpkgs: pythonPackages:
         {
