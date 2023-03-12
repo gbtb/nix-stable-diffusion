@@ -1,5 +1,5 @@
 {
-  description = "A very basic flake";
+  description = "Nix Flake for runnig Stable Diffusion on NixOS";
 
   inputs = {
     nixlib.url = "github:nix-community/nixpkgs.lib";
@@ -21,11 +21,9 @@
       system = "x86_64-linux";
       requirementsFor = { pkgs, webui ? false }: with pkgs; with pkgs.python3.pkgs; [
         python3
-
         torch
         torchvision
         numpy
-
         albumentations
         opencv4
         pudb
@@ -44,7 +42,6 @@
         kornia
         k-diffusion
         diffusers
-
         # following packages not needed for vanilla SD but used by both UIs
         realesrgan
         pillow
@@ -57,14 +54,12 @@
         click
         pypatchmatch
         torchsde
-        trampoline
         compel
         safetensors
         send2trash
         flask
         flask-socketio
         flask-cors
-        dependency-injector
         gfpgan
         eventlet
         clipseg
@@ -98,10 +93,6 @@
       overlay_default = nixpkgs: pythonPackages:
         {
           pytorch-lightning = pythonPackages.pytorch-lightning.overrideAttrs (old: {
-            nativeBuildInputs = old.nativeBuildInputs ++ [ nixpkgs.python3Packages.pythonRelaxDepsHook ];
-            pythonRelaxDeps = [ "protobuf" ];
-          });
-          wandb = pythonPackages.wandb.overrideAttrs (old: {
             nativeBuildInputs = old.nativeBuildInputs ++ [ nixpkgs.python3Packages.pythonRelaxDepsHook ];
             pythonRelaxDeps = [ "protobuf" ];
           });
@@ -244,12 +235,11 @@
     in
     {
       packages.${system} =
-        let nixpkgs = (nixpkgs_ { amd = true; });
-        in
-        {
-          invokeai = {
-            amd =
-              nixpkgs.python3.pkgs.buildPythonPackage {
+        let 
+          nixpkgs = (nixpkgs_ { });
+          nixpkgsAmd = (nixpkgs_ { amd = true; });
+          nixpkgsNvidia = (nixpkgs_ { nvidia = true; });
+          invokeaiF = nixpkgs: nixpkgs.python3.pkgs.buildPythonPackage {
                 pname = "invokeai";
                 version = "2.3.1";
                 src = invokeai-repo;
@@ -258,40 +248,17 @@
                 nativeBuildInputs = [ nixpkgs.pkgs.pythonRelaxDepsHook ];
                 pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" ];
                 pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
-                /* preBuild = '' */
-                /*   sed -i "/opencv-python\|flaskwebgui\|pytorch-lightning\|socketio\|flask==2.1.3\|torch>=1.13.1\|torchvision\|pyreadline3/d" pyproject.toml */
-                /* ''; */
               };
+        in
+        {
+          invokeai = {
+            amd = invokeaiF nixpkgsAmd;
+            nvidia = invokeaiF nixpkgsNvidia;
+            default = invokeaiF nixpkgs;
           };
         };
       devShells.${system} =
         rec {
-          invokeai =
-            let
-              shellHook = ''
-                cd InvokeAI
-              '';
-            in
-            {
-              default = mkShell
-                ({
-                  inherit shellHook;
-                  name = "invokeai";
-                  propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { }); };
-                });
-              amd = mkShell
-                ({
-                  inherit shellHook;
-                  name = "invokeai.amd";
-                  propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { amd = true; }); };
-                });
-              nvidia = mkShell
-                ({
-                  inherit shellHook;
-                  name = "invokeai.nvidia";
-                  propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { nvidia = true; }); };
-                });
-            };
           webui =
             let
               shellHookFor = nixpkgs:
@@ -345,7 +312,6 @@
                   }
                 );
             };
-          default = invokeai.amd;
         };
     };
 }

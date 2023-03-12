@@ -1,15 +1,30 @@
-{ buildPythonPackage, lib, numpy,  fetchFromGitHub, pillow, tqdm, setuptools }:
-
-buildPythonPackage rec {
-  pname = "pypatchmatch";
-  version = "0.1.1";
-
+{ buildPythonPackage, lib, numpy,  fetchFromGitHub, pillow, tqdm, setuptools, stdenv, pkg-config, opencv4 }:
+let
+  version = "1.0.0";
   src = fetchFromGitHub {
-    owner = "invoke-ai";
+    owner = "mauwii";
     repo = "PyPatchMatch";
-    rev = version;
-    sha256 = "sha256-PemWmujCMVzKF3/BL0jrL+z5KCKIertrYLAwf/+ZySs=";
+    rev = "release/v${version}";
+    sha256 = "sha256-icxRmmxWvztQvMsYBJatvGa2YzxX05+xxdg+UJuy1SQ=";
   };
+  libpatchmatch = stdenv.mkDerivation {
+    name = "libpatchmatch";
+    sourceRoot = ["source/patchmatch"];
+    nativeBuildInputs = [
+      pkg-config
+      opencv4
+    ];
+    inherit src version;
+
+    installPhase = ''
+      mkdir -p $out/lib
+      cp libpatchmatch.so $out/lib/
+    '';
+  };
+in
+buildPythonPackage {
+  pname = "pypatchmatch";
+  inherit src version;
 
   format = "pyproject";
   buildInputs = [ setuptools ];
@@ -17,6 +32,10 @@ buildPythonPackage rec {
 
   # TODO FIXME
   doCheck = false;
+
+  postInstall = ''
+    cp ${libpatchmatch}/lib/libpatchmatch.so $out/lib/*/site-packages/patchmatch/
+  '';
 
   meta = {
     description = "This library implements the PatchMatch based inpainting algorithm";
