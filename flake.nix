@@ -7,7 +7,7 @@
       url = "github:NixOS/nixpkgs"; #?rev=33919d25f0c873b0c73e2f8d0859fab3bd0d1b26";
     };
     stable-diffusion-repo = {
-      url = "github:CompVis/stable-diffusion?rev=69ae4b35e0a0f6ee1af8bb9a5d0016ccb27e36dc";
+      url = "github:Stability-AI/stablediffusion?rev=47b6b607fdd31875c9279cd2f4f16b92e4ea958e";
       flake = false;
     };
     invokeai-repo = {
@@ -45,6 +45,7 @@
         # following packages not needed for vanilla SD but used by both UIs
         realesrgan
         pillow
+        safetensors
       ]
       ++ nixlib.optional (!webui) [
         npyscreen
@@ -55,7 +56,6 @@
         pypatchmatch
         torchsde
         compel
-        safetensors
         send2trash
         flask
         flask-socketio
@@ -86,9 +86,10 @@
         fonts
         font-roboto
         piexif
-        websockets
         codeformer
         blip
+        psutil
+        openclip
       ];
       overlay_default = nixpkgs: pythonPackages:
         {
@@ -126,7 +127,7 @@
             "shap"
             "fonts"
             "font-roboto"
-            "analytics"
+            "analytics-python"
             "markdown-it-py"
             "gradio"
             "hatch-requirements-txt"
@@ -148,6 +149,7 @@
             "diffusers"
             "safetensors"
             "picklescan"
+            "openclip"
           ];
         in
         {
@@ -159,8 +161,8 @@
           gfpgan = rmCallPackage ./packages/gfpgan { opencv-python = self.opencv4; };
           basicsr = rmCallPackage ./packages/basicsr { opencv-python = self.opencv4; };
           facexlib = rmCallPackage ./packages/facexlib { opencv-python = self.opencv4; };
-          realesrgan = rmCallPackage ./packages/realesrgan { opencv-python = self.opencv4; };
           codeformer = callPackage ./packages/codeformer { opencv-python = self.opencv4; };
+          realesrgan = rmCallPackage ./packages/realesrgan { opencv-python = self.opencv4; };
           clipseg = rmCallPackage ./packages/clipseg { opencv-python = self.opencv4; };
           k-diffusion = callPackage ./packages/k-diffusion { clean-fid = self.clean-fid; };
         } // mapCallPackage simplePackages;
@@ -200,7 +202,7 @@
             (final: prev:
               let
                 optional = nixlib.optionalAttrs;
-                sl = (prev.streamlit.override({protobuf3 = prev.protobuf;}));
+                sl = (prev.streamlit.override ({ protobuf3 = prev.protobuf; }));
                 makePythonHook = args: final.makeSetupHook ({ passthru.provides.setupHook = true; } // args);
                 pythonRelaxDepsHook = prev.callPackage
                   ({ wheel }:
@@ -235,20 +237,20 @@
     in
     {
       packages.${system} =
-        let 
+        let
           nixpkgs = (nixpkgs_ { });
           nixpkgsAmd = (nixpkgs_ { amd = true; });
           nixpkgsNvidia = (nixpkgs_ { nvidia = true; });
           invokeaiF = nixpkgs: nixpkgs.python3.pkgs.buildPythonPackage {
-                pname = "invokeai";
-                version = "2.3.1";
-                src = invokeai-repo;
-                format = "pyproject";
-                propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; };
-                nativeBuildInputs = [ nixpkgs.pkgs.pythonRelaxDepsHook ];
-                pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" ];
-                pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
-              };
+            pname = "invokeai";
+            version = "2.3.1";
+            src = invokeai-repo;
+            format = "pyproject";
+            propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; };
+            nativeBuildInputs = [ nixpkgs.pkgs.pythonRelaxDepsHook ];
+            pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" ];
+            pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
+          };
         in
         {
           invokeai = {
@@ -258,7 +260,7 @@
           };
         };
       devShells.${system} =
-        rec {
+        {
           webui =
             let
               shellHookFor = nixpkgs:
@@ -268,19 +270,26 @@
                   k_diffusion = submodel "k-diffusion";
                   codeformer = (submodel "codeformer") + "/codeformer";
                   blip = (submodel "blip") + "/blip";
+              joinedModels = nixpkgs.symlinkJoin { name = "webui-models"; paths = [ inputs.stable-diffusion-repo taming-transformers k_diffusion codeformer blip ]; };
                 in
                 ''
                   cd stable-diffusion-webui
-                  git reset --hard HEAD
-                  git apply ${./webui.patch}
+                  #git reset --hard HEAD
+                  #git apply ${./webui.patch}
                   rm -rf repositories/
                   mkdir repositories
-                  ln -s ${inputs.stable-diffusion-repo}/ repositories/stable-diffusion
-                  substituteInPlace modules/paths.py \
-                    --subst-var-by taming_transformers ${taming-transformers} \
-                    --subst-var-by k_diffusion ${k_diffusion} \
-                    --subst-var-by codeformer ${codeformer} \
-                    --subst-var-by blip ${blip}
+                  pushd repositories
+                  ln -s ${inputs.stable-diffusion-repo}/ stable-diffusion-stability-ai
+                  ln -s ${taming-transformers}/ taming-transformers
+                  ln -s ${k_diffusion}/ k-diffusion
+                  ln -s ${codeformer}/ CodeFormer
+                  ln -s ${blip}/ BLIP
+                  popd
+                  /* substituteInPlace modules/paths.py \ */
+                  /*   --subst-var-by taming_transformers ${taming-transformers} \ */
+                  /*   --subst-var-by k_diffusion ${k_diffusion} \ */
+                  /*   --subst-var-by codeformer ${codeformer} \ */
+                  /*   --subst-var-by blip ${blip} */
                 '';
             in
             {
