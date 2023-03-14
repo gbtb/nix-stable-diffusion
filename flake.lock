@@ -52,7 +52,8 @@
         "invokeai-repo": "invokeai-repo",
         "nixlib": "nixlib",
         "nixpkgs": "nixpkgs",
-        "stable-diffusion-repo": "stable-diffusion-repo"
+        "stable-diffusion-repo": "stable-diffusion-repo",
+        "webui-repo": "webui-repo"
       }
     },
     "stable-diffusion-repo": {
@@ -69,6 +70,22 @@
         "owner": "Stability-AI",
         "repo": "stablediffusion",
         "rev": "47b6b607fdd31875c9279cd2f4f16b92e4ea958e",
+        "type": "github"
+      }
+    },
+    "webui-repo": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1678645522,
+        "narHash": "sha256-Z4hS9+tFrZUMxetPPExurw4xOlLeaFmYkrpjPaK5+Gk=",
+        "owner": "AUTOMATIC1111",
+        "repo": "stable-diffusion-webui",
+        "rev": "dfeee786f903e392dbef1519c7c246b9856ebab3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AUTOMATIC1111",
+        "repo": "stable-diffusion-webui",
         "type": "github"
       }
     }

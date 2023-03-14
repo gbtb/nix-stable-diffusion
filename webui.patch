@@ -1,59 +1,14 @@
-From 13dae9774101c2e8e7c757baf799552599c5b34e Mon Sep 17 00:00:00 2001
-From: William Casarin <jb55@jb55.com>
-Date: Sun, 27 Nov 2022 12:58:22 -0800
-Subject: [PATCH] nix-stable-diffusion hacks
-
----
- launch.py        | 12 ++++++------
- modules/paths.py |  8 ++++----
- 2 files changed, 10 insertions(+), 10 deletions(-)
-
 diff --git a/launch.py b/launch.py
-index 8affd41..394436e 100644
+index b943fed22c..12a02d27cb 100644
 --- a/launch.py
 +++ b/launch.py
-@@ -176,16 +176,16 @@ def prepare_enviroment():
+@@ -153,8 +153,7 @@ def git_clone(url, dir, name, commithash=None):
+     # TODO clone into temporary dir and move if successful
  
-     os.makedirs(dir_repos, exist_ok=True)
+     if os.path.exists(dir):
+-        if commithash is None:
+-            return
++        return
  
--    git_clone(stable_diffusion_repo, repo_dir('stable-diffusion'), "Stable Diffusion", stable_diffusion_commit_hash)
--    git_clone(taming_transformers_repo, repo_dir('taming-transformers'), "Taming Transformers", taming_transformers_commit_hash)
--    git_clone(k_diffusion_repo, repo_dir('k-diffusion'), "K-diffusion", k_diffusion_commit_hash)
--    git_clone(codeformer_repo, repo_dir('CodeFormer'), "CodeFormer", codeformer_commit_hash)
--    git_clone(blip_repo, repo_dir('BLIP'), "BLIP", blip_commit_hash)
-+    #git_clone(stable_diffusion_repo, repo_dir('stable-diffusion'), "Stable Diffusion", stable_diffusion_commit_hash)
-+    #git_clone(taming_transformers_repo, repo_dir('taming-transformers'), "Taming Transformers", taming_transformers_commit_hash)
-+    #git_clone(k_diffusion_repo, repo_dir('k-diffusion'), "K-diffusion", k_diffusion_commit_hash)
-+    #git_clone(codeformer_repo, repo_dir('CodeFormer'), "CodeFormer", codeformer_commit_hash)
-+    #git_clone(blip_repo, repo_dir('BLIP'), "BLIP", blip_commit_hash)
- 
-     if not is_installed("lpips"):
-         run_pip(f"install -r {os.path.join(repo_dir('CodeFormer'), 'requirements.txt')}", "requirements for CodeFormer")
- 
--    run_pip(f"install -r {requirements_file}", "requirements for Web UI")
-+    #run_pip(f"install -r {requirements_file}", "requirements for Web UI")
- 
-     if update_check:
-         version_check(commit)
-diff --git a/modules/paths.py b/modules/paths.py
-index 1e7a2fb..1298c58 100644
---- a/modules/paths.py
-+++ b/modules/paths.py
-@@ -19,10 +19,10 @@ assert sd_path is not None, "Couldn't find Stable Diffusion in any of: " + str(p
- 
- path_dirs = [
-     (sd_path, 'ldm', 'Stable Diffusion', []),
--    (os.path.join(sd_path, '../taming-transformers'), 'taming', 'Taming Transformers', []),
--    (os.path.join(sd_path, '../CodeFormer'), 'inference_codeformer.py', 'CodeFormer', []),
--    (os.path.join(sd_path, '../BLIP'), 'models/blip.py', 'BLIP', []),
--    (os.path.join(sd_path, '../k-diffusion'), 'k_diffusion/sampling.py', 'k_diffusion', ["atstart"]),
-+    ('@taming_transformers@', 'taming', 'Taming Transformers', []),            
-+    ('@codeformer@', 'inference_codeformer.py', 'CodeFormer', []),             
-+    ('@blip@', 'models/blip.py', 'BLIP', []),                                  
-+    ('@k_diffusion@', 'k_diffusion/sampling.py', 'k_diffusion', ["atstart"]),  
- ]
- 
- paths = {}
--- 
-2.38.1
-
+         current_hash = run(f'"{git}" -C "{dir}" rev-parse HEAD', None, f"Couldn't determine {name}'s hash: {commithash}").strip()
+         if current_hash == commithash:

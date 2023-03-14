@@ -14,8 +14,12 @@
       url = "github:invoke-ai/InvokeAI?ref=v2.3.1.post2";
       flake = false;
     };
+    webui-repo = {
+      url = "github:AUTOMATIC1111/stable-diffusion-webui"; 
+      flake = false;
+    };
   };
-  outputs = { self, nixpkgs, nixlib, stable-diffusion-repo, invokeai-repo }@inputs:
+  outputs = { self, nixpkgs, nixlib, stable-diffusion-repo, invokeai-repo, webui-repo }@inputs:
     let
       nixlib = inputs.nixlib.outputs.lib;
       system = "x86_64-linux";
@@ -68,6 +72,7 @@
         picklescan
       ]
       ++ nixlib.optional webui [
+        pip
         addict
         future
         lmdb
@@ -247,7 +252,7 @@
           nixpkgs = (nixpkgs_ { });
           nixpkgsAmd = (nixpkgs_ { amd = true; });
           nixpkgsNvidia = (nixpkgs_ { nvidia = true; });
-          invokeaiF = nixpkgs: nixpkgs.python3.pkgs.buildPythonPackage {
+          invokeaiF = nixpkgs: nixpkgs.python3.pkgs.buildPythonApplication {
             pname = "invokeai";
             version = "2.3.1";
             src = invokeai-repo;
@@ -257,12 +262,70 @@
             pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" ];
             pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
           };
+            submodel = pkg: nixpkgs.pkgs.python3.pkgs.${pkg} + "/lib/python3.10/site-packages";
+            taming-transformers = submodel "taming-transformers-rom1504";
+            k_diffusion = submodel "k-diffusion";
+            codeformer = (submodel "codeformer") + "/codeformer";
+            blip = (submodel "blip") + "/blip";
+          webuiF = nixpkgs: nixpkgs.python3.pkgs.buildPythonApplication {
+            pname = "stable-diffusion-webui";
+            version = "2023-03-12";
+            src = webui-repo;
+            format = "other";
+            propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; webui = true; nvidia = nixpkgs.nvidia; };
+            nativeBuildInputs = [ nixpkgs.pkgs.makeWrapper ];
+            patches = [ ./webui.patch ];
+            patchFlags = [ "--binary" ];
+            buildPhase = ''
+                  runHook preBuild
+                  cp -r . $out
+                  chmod -R +w $out
+                  cd $out
+                  cat <<-EOF > launch.py 
+                  $(echo "#!/usr/bin/python") 
+                  $(cat launch.py) 
+                  EOF
+                  chmod +x launch.py
+
+                  mv launch.py launch.py.wrapped 
+                  makeWrapper "$(pwd)/launch.py.wrapped" launch.py \
+                    --set-default PYTHONPATH $PYTHONPATH \
+                    --add-flags "--skip-install"
+
+                  mkdir $out/bin
+                  pushd $out/bin
+                  ln -s ../launch.py .
+                  popd
+
+                  runHook postBuild
+            '';
+            installPhase = ''
+                  runHook preInstall
+
+                  rm -rf repositories/
+                  mkdir repositories
+                  pushd repositories
+                  ln -s ${inputs.stable-diffusion-repo}/ stable-diffusion-stability-ai
+                  ln -s ${taming-transformers}/ taming-transformers
+                  ln -s ${k_diffusion}/ k-diffusion
+                  ln -s ${codeformer}/ CodeFormer
+                  ln -s ${blip}/ BLIP
+                  popd
+                  #makeWrapper $out/launch.py "launch" 
+                  runHook postInstall
+            '';
+          };
         in
         {
           invokeai = {
             amd = invokeaiF nixpkgsAmd;
             nvidia = invokeaiF nixpkgsNvidia;
             default = invokeaiF nixpkgs;
+          };
+          webui = {
+            amd = webuiF nixpkgsAmd;
+            nvidia = webuiF nixpkgsNvidia;
+            default = webuiF nixpkgs;
           };
         };
       devShells.${system} =
@@ -276,12 +339,9 @@
                   k_diffusion = submodel "k-diffusion";
                   codeformer = (submodel "codeformer") + "/codeformer";
                   blip = (submodel "blip") + "/blip";
-              joinedModels = nixpkgs.symlinkJoin { name = "webui-models"; paths = [ inputs.stable-diffusion-repo taming-transformers k_diffusion codeformer blip ]; };
                 in
                 ''
                   cd stable-diffusion-webui
-                  #git reset --hard HEAD
-                  #git apply ${./webui.patch}
                   rm -rf repositories/
                   mkdir repositories
                   pushd repositories
@@ -291,11 +351,6 @@
                   ln -s ${codeformer}/ CodeFormer
                   ln -s ${blip}/ BLIP
                   popd
-                  /* substituteInPlace modules/paths.py \ */
-                  /*   --subst-var-by taming_transformers ${taming-transformers} \ */
-                  /*   --subst-var-by k_diffusion ${k_diffusion} \ */
-                  /*   --subst-var-by codeformer ${codeformer} \ */
-                  /*   --subst-var-by blip ${blip} */
                 '';
             in
             {
