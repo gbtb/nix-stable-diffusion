@@ -19,7 +19,7 @@
     let
       nixlib = inputs.nixlib.outputs.lib;
       system = "x86_64-linux";
-      requirementsFor = { pkgs, webui ? false }: with pkgs; with pkgs.python3.pkgs; [
+      requirementsFor = { pkgs, webui ? false, nvidia ? false }: with pkgs; with pkgs.python3.pkgs; [
         python3
         torch
         torchvision
@@ -47,6 +47,7 @@
         pillow
         safetensors
       ]
+      ++ nixlib.optional (nvidia) [ xformers ]
       ++ nixlib.optional (!webui) [
         npyscreen
         huggingface-hub
@@ -90,6 +91,7 @@
         blip
         psutil
         openclip
+        blendmodes
       ];
       overlay_default = nixpkgs: pythonPackages:
         {
@@ -150,6 +152,10 @@
             "safetensors"
             "picklescan"
             "openclip"
+            "blendmodes"
+            "xformers"
+            "pyre-extensions"
+            # "triton" nixpkgs is missing required llvm parts - mlir
           ];
         in
         {
@@ -233,7 +239,7 @@
                 };
               })
           ];
-        };
+        } // { inherit nvidia; };
     in
     {
       packages.${system} =
@@ -246,7 +252,7 @@
             version = "2.3.1";
             src = invokeai-repo;
             format = "pyproject";
-            propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; };
+            propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; nvidia = nixpkgs.nvidia; };
             nativeBuildInputs = [ nixpkgs.pkgs.pythonRelaxDepsHook ];
             pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" ];
             pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
