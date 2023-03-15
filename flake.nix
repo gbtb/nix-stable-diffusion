@@ -281,20 +281,19 @@
                   cp -r . $out
                   chmod -R +w $out
                   cd $out
-                  cat <<-EOF > launch.py 
+                  cat <<-EOF > exec_launch.py.unwrapped
                   $(echo "#!/usr/bin/python") 
                   $(cat launch.py) 
                   EOF
-                  chmod +x launch.py
+                  chmod +x exec_launch.py.unwrapped
 
-                  mv launch.py launch.py.wrapped 
-                  makeWrapper "$(pwd)/launch.py.wrapped" launch.py \
+                  makeWrapper "$(pwd)/exec_launch.py.unwrapped" exec_launch.py \
                     --set-default PYTHONPATH $PYTHONPATH \
                     --add-flags "--skip-install"
 
                   mkdir $out/bin
                   pushd $out/bin
-                  ln -s ../launch.py .
+                  ln -s ../exec_launch.py launch.py
                   popd
 
                   runHook postBuild
