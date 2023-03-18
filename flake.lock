@@ -76,17 +76,13 @@
     "webui-repo": {
       "flake": false,
       "locked": {
-        "lastModified": 1678645522,
-        "narHash": "sha256-Z4hS9+tFrZUMxetPPExurw4xOlLeaFmYkrpjPaK5+Gk=",
-        "owner": "AUTOMATIC1111",
-        "repo": "stable-diffusion-webui",
-        "rev": "dfeee786f903e392dbef1519c7c246b9856ebab3",
-        "type": "github"
+        "narHash": "sha256-L5aYKZl2NZgH+Ikddz9mZRvejhsa7N7svt2Rfi/DFL4=",
+        "type": "file",
+        "url": "https://github.com/gbtb/stable-diffusion-webui"
       },
       "original": {
-        "owner": "AUTOMATIC1111",
-        "repo": "stable-diffusion-webui",
-        "type": "github"
+        "type": "file",
+        "url": "https://github.com/gbtb/stable-diffusion-webui"
       }
     }
   },

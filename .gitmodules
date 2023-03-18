@@ -1,3 +1,0 @@
-[submodule "stable-diffusion-webui"]
-	path = stable-diffusion-webui
-	url = ../../AUTOMATIC1111/stable-diffusion-webui

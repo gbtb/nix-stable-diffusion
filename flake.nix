@@ -15,7 +15,8 @@
       flake = false;
     };
     webui-repo = {
-      url = "github:AUTOMATIC1111/stable-diffusion-webui"; 
+      #url = "github:AUTOMATIC1111/stable-diffusion-webui"; 
+      url = "https://github.com/gbtb/stable-diffusion-webui";
       flake = false;
     };
   };
@@ -160,7 +161,7 @@
             "blendmodes"
             "xformers"
             "pyre-extensions"
-            # "triton" nixpkgs is missing required llvm parts - mlir
+            # "triton" TODO: nixpkgs is missing required llvm parts - mlir. https://github.com/NixOS/nixpkgs/pull/163878
           ];
         in
         {
@@ -204,7 +205,6 @@
         };
     in
     let
-      mkShell = inputs.nixpkgs.legacyPackages.${system}.mkShell;
       nixpkgs_ = { amd ? false, nvidia ? false, webui ? false }:
         import inputs.nixpkgs {
           inherit system;
@@ -274,26 +274,49 @@
             format = "other";
             propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; webui = true; nvidia = nixpkgs.nvidia; };
             nativeBuildInputs = [ nixpkgs.pkgs.makeWrapper ];
-            patches = [ ./webui.patch ];
-            patchFlags = [ "--binary" ];
             buildPhase = ''
                   runHook preBuild
                   cp -r . $out
                   chmod -R +w $out
                   cd $out
+
+                  #firstly, we need to make launch.py runnable by adding python shebang
                   cat <<-EOF > exec_launch.py.unwrapped
                   $(echo "#!/usr/bin/python") 
                   $(cat launch.py) 
                   EOF
                   chmod +x exec_launch.py.unwrapped
 
+                  #creating wrapper around launch.py with PYTHONPATH correctly set
                   makeWrapper "$(pwd)/exec_launch.py.unwrapped" exec_launch.py \
-                    --set-default PYTHONPATH $PYTHONPATH \
-                    --add-flags "--skip-install"
+                    --set-default PYTHONPATH $PYTHONPATH
 
                   mkdir $out/bin
                   pushd $out/bin
                   ln -s ../exec_launch.py launch.py
+                  buck='$' #escaping $ inside shell inside shell is tricky
+                  #next is an additional shell wrapper, which sets sensible default args for CLI
+                  #it requires path to a main directory
+                  #additional arguments will be passed further
+                  cat <<-EOF > flake-launch
+                  #!/usr/bin/env bash 
+                  pushd $out        #For some reason, fastapi only works when current workdir is set inside the repo
+                  trap "popd" EXIT
+
+                  #here we have to escape all \$ that should not interpolate inside cat invocation
+                  #I'm pretty sure that it could be done with some clever nix subsitution, but ...
+                  "$out/bin/launch.py" --skip-install --data-dir "\$1" "$buck{@:2}"
+                  EOF
+                    # below lie remnants of my attempt to make webui use similar paths as InvokeAI for models download
+                    # additions of such options in upstream is a welcome sign, however they're mostly ignored and therefore useless
+                    # TODO: check in 6 months, maybe it'll work
+                    # For now, your best bet is to use ZFS dataset with dedup enabled or make symlinks after the fact
+                    
+                    #--codeformer-models-path "\$mp/codeformer" \
+                    #--gfpgan-models-path "\$mp/gfpgan" --esrgan-models-path "\$mp/esrgan" \
+                    #--bsrgan-models-path "\$mp/bsrgan" --realesrgan-models-path "\$mp/realesrgan" \
+                    #--clip-models-path "\$mp/clip" 
+                  chmod +x flake-launch
                   popd
 
                   runHook postBuild
@@ -310,7 +333,6 @@
                   ln -s ${codeformer}/ CodeFormer
                   ln -s ${blip}/ BLIP
                   popd
-                  #makeWrapper $out/launch.py "launch" 
                   runHook postInstall
             '';
           };
@@ -326,61 +348,6 @@
             nvidia = webuiF nixpkgsNvidia;
             default = webuiF nixpkgs;
           };
-        };
-      devShells.${system} =
-        {
-          webui =
-            let
-              shellHookFor = nixpkgs:
-                let
-                  submodel = pkg: nixpkgs.pkgs.python3.pkgs.${pkg} + "/lib/python3.10/site-packages";
-                  taming-transformers = submodel "taming-transformers-rom1504";
-                  k_diffusion = submodel "k-diffusion";
-                  codeformer = (submodel "codeformer") + "/codeformer";
-                  blip = (submodel "blip") + "/blip";
-                in
-                ''
-                  cd stable-diffusion-webui
-                  rm -rf repositories/
-                  mkdir repositories
-                  pushd repositories
-                  ln -s ${inputs.stable-diffusion-repo}/ stable-diffusion-stability-ai
-                  ln -s ${taming-transformers}/ taming-transformers
-                  ln -s ${k_diffusion}/ k-diffusion
-                  ln -s ${codeformer}/ CodeFormer
-                  ln -s ${blip}/ BLIP
-                  popd
-                '';
-            in
-            {
-              default = mkShell
-                (
-                  let args = { pkgs = (nixpkgs_ { webui = true; }); webui = true; }; in
-                  {
-                    shellHook = shellHookFor args.pkgs;
-                    name = "webui";
-                    propagatedBuildInputs = requirementsFor args.pkgs;
-                  }
-                );
-              amd = mkShell
-                (
-                  let args = { pkgs = (nixpkgs_ { webui = true; amd = true; }); webui = true; }; in
-                  {
-                    shellHook = shellHookFor args.pkgs;
-                    name = "webui.amd";
-                    propagatedBuildInputs = requirementsFor args;
-                  }
-                );
-              nvidia = mkShell
-                (
-                  let args = { pkgs = (nixpkgs_ { webui = true; nvidia = true; }); webui = true; }; in
-                  {
-                    shellHook = shellHookFor args.pkgs;
-                    name = "webui.nvidia";
-                    propagatedBuildInputs = requirementsFor args;
-                  }
-                );
-            };
         };
     };
 }
