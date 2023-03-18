@@ -16,7 +16,7 @@
     };
     webui-repo = {
       #url = "github:AUTOMATIC1111/stable-diffusion-webui"; 
-      url = "https://github.com/gbtb/stable-diffusion-webui";
+      url = "github:gbtb/stable-diffusion-webui";
       flake = false;
     };
   };
@@ -257,6 +257,7 @@
             version = "2.3.1";
             src = invokeai-repo;
             format = "pyproject";
+            meta.mainProgram = "invokeai";
             propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; nvidia = nixpkgs.nvidia; };
             nativeBuildInputs = [ nixpkgs.pkgs.pythonRelaxDepsHook ];
             pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" ];
@@ -274,6 +275,7 @@
             format = "other";
             propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; webui = true; nvidia = nixpkgs.nvidia; };
             nativeBuildInputs = [ nixpkgs.pkgs.makeWrapper ];
+            meta.mainProgram = "flake-launch";
             buildPhase = ''
                   runHook preBuild
                   cp -r . $out
