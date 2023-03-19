@@ -252,7 +252,6 @@
     {
       packages.${system} =
         let
-          nixpkgs = (nixpkgs_ { });
           nixpkgsAmd = (nixpkgs_ { amd = true; });
           nixpkgsNvidia = (nixpkgs_ { nvidia = true; });
           invokeaiF = nixpkgs: nixpkgs.python3.pkgs.buildPythonApplication {
@@ -266,12 +265,15 @@
             pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" ];
             pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
           };
+          webuiF = nixpkgs: 
+          let
             submodel = pkg: nixpkgs.pkgs.python3.pkgs.${pkg} + "/lib/python3.10/site-packages";
             taming-transformers = submodel "taming-transformers-rom1504";
             k_diffusion = submodel "k-diffusion";
             codeformer = (submodel "codeformer") + "/codeformer";
             blip = (submodel "blip") + "/blip";
-          webuiF = nixpkgs: nixpkgs.python3.pkgs.buildPythonApplication {
+          in
+          nixpkgs.python3.pkgs.buildPythonApplication {
             pname = "stable-diffusion-webui";
             version = "2023-03-12";
             src = webui-repo;
@@ -342,13 +344,11 @@
         {
           invokeai = {
             amd = invokeaiF nixpkgsAmd;
-            nvidia = invokeaiF nixpkgsNvidia;
-            default = invokeaiF nixpkgs;
+            default = invokeaiF nixpkgsNvidia;
           };
           webui = {
             amd = webuiF nixpkgsAmd;
-            nvidia = webuiF nixpkgsNvidia;
-            default = webuiF nixpkgs;
+            default = webuiF nixpkgsNvidia;
           };
         };
     };

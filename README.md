@@ -26,9 +26,8 @@ Flake for running SD on NixOS
 ## InvokeAI
 1. Clone repo
 1. Run `nix run .#invokeai.{default,amd,nvidia} -- --web --root_dir "folder for configs and models"`, wait for package to build
-    1. `.#invokeai.default` builds package which overrides bare minimum required for SD to run
+    1. `.#invokeai.default` builds package with default torch-bin that has CUDA-support by default
     1. `.#invokeai.amd` builds package which overrides torch packages with ROCM-enabled bin versions
-    1. `.#invokeai.nvidia` builds package with overlay explicitly setting `cudaSupport = true` for torch
 1. Weights download 
     1. **Built-in CLI way.** Upon first launch InvokeAI will check its default config dir (~/invokeai) and suggest you to run build-in TUI startup configuration script that help you to download default models or supply existing ones to InvokeAI. Follow the instructions and finish configuration. Note: you can also pass option `--root_dir` to pick another location for configs/models installation. More fine-grained directory setup options also available - run `nix run .#invokeai -- --help` for more info.
     2. **Build-in GUI way.** Recent version of InvokeAI added GUI for model managing. See upstream [docs](https://invoke-ai.github.io/InvokeAI/installation/050_INSTALLING_MODELS/#installation-via-the-webui) on that matter.
@@ -38,9 +37,8 @@ Flake for running SD on NixOS
 ## stable-diffusion-webui aka 111AUTOMATIC111 fork
 1. Clone repo
 1. Run `nix run .#webui.{default,nvidia,amd} -- --data-dir "runtime folder for webui stuff" --ckpt-dir "folder with pre-downloaded main SD models"`, wait for packages to build
-    1. `.#webui.default` builds package which overrides bare minimum required for SD to run
+    1. `.#webui.default` builds package with default torch-bin that has CUDA-support by default
     1. `.#webui.amd` builds package which overrides torch packages with ROCM-enabled bin versions
-    1. `.#webui.nvidia` builds package with overlay explicitly setting `cudaSupport = true` for torch
 1. Webui is not a proper python package by itself, so I had to make a multi-layered wrapper script which sets required env and args. `bin/flake-launch` is a top-level wrapper, which sets default args and is running by default. `bin/launch.py` is a thin wrapper around original launch.py which only sets PYTHONPATH with required packages. Both wrappers pass additional args further down the pipeline. To list all available args you may run `nix run .#webui.amd -- --help`.
 
 ## Hardware quirks
