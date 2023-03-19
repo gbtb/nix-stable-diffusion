@@ -5,8 +5,8 @@
   , transformers
   , fairscale
   , lib
-}:
-stdenv.mkDerivation rec {
+, buildPythonPackage}:
+buildPythonPackage rec {
   pname = "blip";
   version = "0.1.0";
 
@@ -24,6 +24,8 @@ stdenv.mkDerivation rec {
   '';
 
   dontInstall = true;
+
+  format="other";
 
   propagatedBuildInputs = [
     timm

@@ -1,38 +1,44 @@
 {
-  description = "A very basic flake";
+  description = "Nix Flake for runnig Stable Diffusion on NixOS";
 
   inputs = {
     nixlib.url = "github:nix-community/nixpkgs.lib";
     nixpkgs = {
-      url = "github:NixOS/nixpkgs?rev=fd54651f5ffb4a36e8463e0c327a78442b26cbe7";
+      url = "github:NixOS/nixpkgs"; #?rev=33919d25f0c873b0c73e2f8d0859fab3bd0d1b26";
     };
     stable-diffusion-repo = {
-      url = "github:CompVis/stable-diffusion?rev=69ae4b35e0a0f6ee1af8bb9a5d0016ccb27e36dc";
+      url = "github:Stability-AI/stablediffusion?rev=47b6b607fdd31875c9279cd2f4f16b92e4ea958e";
+      flake = false;
+    };
+    invokeai-repo = {
+      url = "github:invoke-ai/InvokeAI?ref=v2.3.1.post2";
+      flake = false;
+    };
+    webui-repo = {
+      #url = "github:AUTOMATIC1111/stable-diffusion-webui"; 
+      url = "github:gbtb/stable-diffusion-webui"; #instead of patching in flake, better use a fork. CRLF bullshit makes patching this repo almost impossible
       flake = false;
     };
   };
-  outputs = { self, nixpkgs, nixlib, stable-diffusion-repo }@inputs:
+  outputs = { self, nixpkgs, nixlib, stable-diffusion-repo, invokeai-repo, webui-repo }@inputs:
     let
       nixlib = inputs.nixlib.outputs.lib;
-      supportedSystems = [ "x86_64-linux" ];
-      forAll = nixlib.genAttrs supportedSystems;
-      requirementsFor = { pkgs, webui ? false }: with pkgs; with pkgs.python3.pkgs; [
+      system = "x86_64-linux";
+      requirementsFor = { pkgs, webui ? false, nvidia ? false }: with pkgs; with pkgs.python3.pkgs; [
         python3
-
         torch
         torchvision
         numpy
-
         albumentations
         opencv4
         pudb
         imageio
         imageio-ffmpeg
         pytorch-lightning
-        protobuf3_20
         omegaconf
         test-tube
         streamlit
+        protobuf
         einops
         taming-transformers-rom1504
         torch-fidelity
@@ -40,23 +46,34 @@
         transformers
         kornia
         k-diffusion
-
+        diffusers
         # following packages not needed for vanilla SD but used by both UIs
         realesrgan
         pillow
+        safetensors
       ]
+      ++ nixlib.optional (nvidia) [ xformers ] #probably won't fully work
       ++ nixlib.optional (!webui) [
+        npyscreen
+        huggingface-hub
+        dnspython
+        datasets
+        click
+        pypatchmatch
+        torchsde
+        compel
         send2trash
         flask
         flask-socketio
         flask-cors
-        dependency-injector
         gfpgan
         eventlet
         clipseg
         getpass-asterisk
+        picklescan
       ]
       ++ nixlib.optional webui [
+        pip
         addict
         future
         lmdb
@@ -76,21 +93,15 @@
         fonts
         font-roboto
         piexif
-        websockets
         codeformer
         blip
+        psutil
+        openclip
+        blendmodes
       ];
       overlay_default = nixpkgs: pythonPackages:
         {
           pytorch-lightning = pythonPackages.pytorch-lightning.overrideAttrs (old: {
-            nativeBuildInputs = old.nativeBuildInputs ++ [ nixpkgs.python3Packages.pythonRelaxDepsHook ];
-            pythonRelaxDeps = [ "protobuf" ];
-          });
-          wandb = pythonPackages.wandb.overrideAttrs (old: {
-            nativeBuildInputs = old.nativeBuildInputs ++ [ nixpkgs.python3Packages.pythonRelaxDepsHook ];
-            pythonRelaxDeps = [ "protobuf" ];
-          });
-          streamlit = nixpkgs.streamlit.overrideAttrs (old: {
             nativeBuildInputs = old.nativeBuildInputs ++ [ nixpkgs.python3Packages.pythonRelaxDepsHook ];
             pythonRelaxDeps = [ "protobuf" ];
           });
@@ -115,10 +126,45 @@
           });
           callPackage = self.callPackage;
           rmCallPackage = path: args: rm (callPackage path args);
+          mapCallPackage = pnames: builtins.listToAttrs (builtins.map (pname: { name = pname; value = (callPackage (./packages + "/${pname}") { }); }) pnames);
+          simplePackages = [
+            "filterpy"
+            "kornia"
+            "lpips"
+            "ffmpy"
+            "shap"
+            "fonts"
+            "font-roboto"
+            "analytics-python"
+            "markdown-it-py"
+            "gradio"
+            "hatch-requirements-txt"
+            "timm"
+            "blip"
+            "fairscale"
+            "torch-fidelity"
+            "resize-right"
+            "torchdiffeq"
+            "accelerate"
+            "clip-anytorch"
+            "jsonmerge"
+            "clean-fid"
+            "getpass-asterisk"
+            "pypatchmatch"
+            "trampoline"
+            "torchsde"
+            "compel"
+            "diffusers"
+            "safetensors"
+            "picklescan"
+            "openclip"
+            "blendmodes"
+            "xformers"
+            "pyre-extensions"
+            # "triton" TODO: nixpkgs is missing required llvm parts - mlir. https://github.com/NixOS/nixpkgs/pull/163878
+          ];
         in
-        rec        {
-
-
+        {
           pydeprecate = callPackage ./packages/pydeprecate { };
           taming-transformers-rom1504 =
             callPackage ./packages/taming-transformers-rom1504 { };
@@ -127,53 +173,30 @@
           gfpgan = rmCallPackage ./packages/gfpgan { opencv-python = self.opencv4; };
           basicsr = rmCallPackage ./packages/basicsr { opencv-python = self.opencv4; };
           facexlib = rmCallPackage ./packages/facexlib { opencv-python = self.opencv4; };
-          realesrgan = rmCallPackage ./packages/realesrgan { opencv-python = self.opencv4; };
           codeformer = callPackage ./packages/codeformer { opencv-python = self.opencv4; };
+          realesrgan = rmCallPackage ./packages/realesrgan { opencv-python = self.opencv4; };
           clipseg = rmCallPackage ./packages/clipseg { opencv-python = self.opencv4; };
-          filterpy = callPackage ./packages/filterpy { };
-          kornia = callPackage ./packages/kornia { };
-          lpips = callPackage ./packages/lpips { };
-          ffmpy = callPackage ./packages/ffmpy { };
-          shap = callPackage ./packages/shap { };
-          fonts = callPackage ./packages/fonts { };
-          font-roboto = callPackage ./packages/font-roboto { };
-          analytics-python = callPackage ./packages/analytics-python { };
-          markdown-it-py = callPackage ./packages/markdown-it-py { };
-          gradio = callPackage ./packages/gradio { };
-          hatch-requirements-txt = callPackage ./packages/hatch-requirements-txt { };
-          timm = callPackage ./packages/timm { };
-          blip = callPackage ./packages/blip { };
-          fairscale = callPackage ./packages/fairscale { };
-          torch-fidelity = callPackage ./packages/torch-fidelity { };
-          resize-right = callPackage ./packages/resize-right { };
-          torchdiffeq = callPackage ./packages/torchdiffeq { };
           k-diffusion = callPackage ./packages/k-diffusion { clean-fid = self.clean-fid; };
-          accelerate = callPackage ./packages/accelerate { };
-          clip-anytorch = callPackage ./packages/clip-anytorch { };
-          jsonmerge = callPackage ./packages/jsonmerge { };
-          clean-fid = callPackage ./packages/clean-fid { };
-          getpass-asterisk = callPackage ./packages/getpass-asterisk { };
-        };
+        } // mapCallPackage simplePackages;
       overlay_amd = nixpkgs: pythonPackages:
         rec {
+          #IMPORTANT: you can browse available wheels on the server, but only if you add trailing "/" - e.g. https://download.pytorch.org/whl/rocm5.2/
           torch-bin = pythonPackages.torch-bin.overrideAttrs (old: {
             src = nixpkgs.fetchurl {
-              name = "torch-1.12.1+rocm5.1.1-cp310-cp310-linux_x86_64.whl";
-              url = "https://download.pytorch.org/whl/rocm5.1.1/torch-1.12.1%2Brocm5.1.1-cp310-cp310-linux_x86_64.whl";
-              hash = "sha256-kNShDx88BZjRQhWgnsaJAT8hXnStVMU1ugPNMEJcgnA=";
+              name = "torch-1.13.1+rocm5.2-cp310-cp310-linux_x86_64.whl";
+              url = "https://download.pytorch.org/whl/rocm5.2/torch-1.13.1%2Brocm5.2-cp310-cp310-linux_x86_64.whl";
+              hash = "sha256-82hdCKwNjJUcw2f5vUsskkxdRRdmnEdoB3SKvNlmE28=";
             };
           });
           torchvision-bin = pythonPackages.torchvision-bin.overrideAttrs (old: {
             src = nixpkgs.fetchurl {
-              name = "torchvision-0.13.1+rocm5.1.1-cp310-cp310-linux_x86_64.whl";
-              url = "https://download.pytorch.org/whl/rocm5.1.1/torchvision-0.13.1%2Brocm5.1.1-cp310-cp310-linux_x86_64.whl";
-              hash = "sha256-mYk4+XNXU6rjpgWfKUDq+5fH/HNPQ5wkEtAgJUDN/Jg=";
+              name = "torchvision-0.14.1+rocm5.2-cp310-cp310-linux_x86_64.whl";
+              url = "https://download.pytorch.org/whl/rocm5.2/torchvision-0.14.1%2Brocm5.2-cp310-cp310-linux_x86_64.whl";
+              hash = "sha256-oBYG/K7bgkxu0UvmyS2U1ud2LkFQ/CarcxpEJ9xzMYQ=";
             };
           });
           torch = torch-bin;
           torchvision = torchvision-bin;
-          #overriding because of https://github.com/NixOS/nixpkgs/issues/196653
-          opencv4 = pythonPackages.opencv4.override { openblas = nixpkgs.blas; };
         };
       overlay_nvidia = nixpkgs: pythonPackages:
         {
@@ -181,113 +204,152 @@
           torchvision = pythonPackages.torchvision-bin;
         };
     in
+    let
+      nixpkgs_ = { amd ? false, nvidia ? false, webui ? false }:
+        import inputs.nixpkgs {
+          inherit system;
+          config.allowUnfree = nvidia; #CUDA is unfree.
+          overlays = [
+            (final: prev:
+              let
+                optional = nixlib.optionalAttrs;
+                sl = (prev.streamlit.override ({ protobuf3 = prev.protobuf; }));
+                makePythonHook = args: final.makeSetupHook ({ passthru.provides.setupHook = true; } // args);
+                pythonRelaxDepsHook = prev.callPackage
+                  ({ wheel }:
+                    #upstream hook doesn't work properly with non-standard wheel names
+                    #which means that some packages from pip silently fail to be overriden
+                    #https://github.com/NixOS/nixpkgs/issues/198342
+                    makePythonHook
+                      {
+                        name = "python-relax-deps-hook";
+                        propagatedBuildInputs = [ wheel ];
+                        substitutions = {
+                          pythonInterpreter = nixlib.getExe prev.python3Packages.python;
+                        };
+                      } ./python-relax-deps-hook.sh)
+                  { wheel = prev.python3.pkgs.wheel; };
+              in
+              {
+                inherit pythonRelaxDepsHook;
+                streamlit = sl.overrideAttrs (old: {
+                  nativeBuildInputs = old.nativeBuildInputs ++ [ pythonRelaxDepsHook ];
+                  pythonRemoveDeps = [ "protobuf" ];
+                });
+                python3 = prev.python3.override {
+                  packageOverrides =
+                    python-self: python-super:
+                    (overlay_default prev python-super) //
+                    optional amd (overlay_amd prev python-super) //
+                    optional nvidia (overlay_nvidia prev python-super) //
+                    optional webui (overlay_webui prev python-super) //
+                    (overlay_pynixify python-self);
+                };
+              })
+          ];
+        } // { inherit nvidia; };
+    in
     {
-      devShells = forAll
-        (system:
+      packages.${system} =
+        let
+          nixpkgsAmd = (nixpkgs_ { amd = true; });
+          nixpkgsNvidia = (nixpkgs_ { nvidia = true; });
+          invokeaiF = nixpkgs: nixpkgs.python3.pkgs.buildPythonApplication {
+            pname = "invokeai";
+            version = "2.3.1";
+            src = invokeai-repo;
+            format = "pyproject";
+            meta.mainProgram = "invokeai";
+            propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; nvidia = nixpkgs.nvidia; };
+            nativeBuildInputs = [ nixpkgs.pkgs.pythonRelaxDepsHook ];
+            pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" ];
+            pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
+          };
+          webuiF = nixpkgs: 
           let
-            mkShell = inputs.nixpkgs.legacyPackages.${system}.mkShell;
-            nixpkgs_ = { amd ? false, nvidia ? false, webui ? false }:
-              import inputs.nixpkgs {
-                inherit system;
-                config.allowUnfree = nvidia; #CUDA is unfree.
-                overlays = [
-                  (final: prev:
-                    let optional = nixlib.optionalAttrs; in
-                    {
-                      python3 = prev.python3.override {
-                        packageOverrides =
-                          python-self: python-super:
-                          (overlay_default prev python-super) //
-                          optional amd (overlay_amd prev python-super) //
-                          optional nvidia (overlay_nvidia prev python-super) //
-                          optional webui (overlay_webui prev python-super) //
-                          (overlay_pynixify python-self);
-                      };
-                    })
-                ];
-              };
+            submodel = pkg: nixpkgs.pkgs.python3.pkgs.${pkg} + "/lib/python3.10/site-packages";
+            taming-transformers = submodel "taming-transformers-rom1504";
+            k_diffusion = submodel "k-diffusion";
+            codeformer = (submodel "codeformer") + "/codeformer";
+            blip = (submodel "blip") + "/blip";
           in
-          rec {
-            invokeai =
-              let
-                shellHook = ''
-                  cd InvokeAI
-                '';
-              in
-              {
-                default = mkShell
-                  ({
-                    inherit shellHook;
-                    name = "invokeai";
-                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { }); };
-                  });
-                amd = mkShell
-                  ({
-                    inherit shellHook;
-                    name = "invokeai.amd";
-                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { amd = true; }); };
-                  });
-                nvidia = mkShell
-                  ({
-                    inherit shellHook;
-                    name = "invokeai.nvidia";
-                    propagatedBuildInputs = requirementsFor { pkgs = (nixpkgs_ { nvidia = true; }); };
-                  });
-              };
-            webui =
-              let
-                shellHookFor = nixpkgs:
-                  let
-                    submodel = pkg: nixpkgs.pkgs.python3.pkgs.${pkg} + "/lib/python3.10/site-packages";
-                    taming-transformers = submodel "taming-transformers-rom1504";
-                    k_diffusion = submodel "k-diffusion";
-                    codeformer = (submodel "codeformer") + "/codeformer";
-                    blip = (submodel "blip") + "/blip";
-                  in
-                  ''
-                    cd stable-diffusion-webui
-                    git reset --hard HEAD
-                    git apply ${./webui.patch}
-                    rm -rf repositories/
-                    mkdir repositories
-                    ln -s ${inputs.stable-diffusion-repo}/ repositories/stable-diffusion
-                    substituteInPlace modules/paths.py \
-                      --subst-var-by taming_transformers ${taming-transformers} \
-                      --subst-var-by k_diffusion ${k_diffusion} \
-                      --subst-var-by codeformer ${codeformer} \
-                      --subst-var-by blip ${blip}
-                  '';
-              in
-              {
-                default = mkShell
-                  (
-                    let args = { pkgs = (nixpkgs_ { webui = true; }); webui = true; }; in
-                    {
-                      shellHook = shellHookFor args.pkgs;
-                      name = "webui";
-                      propagatedBuildInputs = requirementsFor args.pkgs;
-                    }
-                  );
-                amd = mkShell
-                  (
-                    let args = { pkgs = (nixpkgs_ { webui = true; amd = true; }); webui = true; }; in
-                    {
-                      shellHook = shellHookFor args.pkgs;
-                      name = "webui.amd";
-                      propagatedBuildInputs = requirementsFor args;
-                    }
-                  );
-                nvidia = mkShell
-                  (
-                    let args = { pkgs = (nixpkgs_ { webui = true; nvidia = true; }); webui = true; }; in
-                    {
-                      shellHook = shellHookFor args.pkgs;
-                      name = "webui.nvidia";
-                      propagatedBuildInputs = requirementsFor args;
-                    }
-                  );
-              };
-            default = invokeai.amd;
-          });
+          nixpkgs.python3.pkgs.buildPythonApplication {
+            pname = "stable-diffusion-webui";
+            version = "2023-03-12";
+            src = webui-repo;
+            format = "other";
+            propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; webui = true; nvidia = nixpkgs.nvidia; };
+            nativeBuildInputs = [ nixpkgs.pkgs.makeWrapper ];
+            meta.mainProgram = "flake-launch";
+            buildPhase = ''
+                  runHook preBuild
+                  cp -r . $out
+                  chmod -R +w $out
+                  cd $out
+
+                  #firstly, we need to make launch.py runnable by adding python shebang
+                  cat <<-EOF > exec_launch.py.unwrapped
+                  $(echo "#!/usr/bin/python") 
+                  $(cat launch.py) 
+                  EOF
+                  chmod +x exec_launch.py.unwrapped
+
+                  #creating wrapper around launch.py with PYTHONPATH correctly set
+                  makeWrapper "$(pwd)/exec_launch.py.unwrapped" exec_launch.py \
+                    --set-default PYTHONPATH $PYTHONPATH
+
+                  mkdir $out/bin
+                  pushd $out/bin
+                  ln -s ../exec_launch.py launch.py
+                  buck='$' #escaping $ inside shell inside shell is tricky
+                  #next is an additional shell wrapper, which sets sensible default args for CLI
+                  #additional arguments will be passed further
+                  cat <<-EOF > flake-launch
+                  #!/usr/bin/env bash 
+                  pushd $out        #For some reason, fastapi only works when current workdir is set inside the repo
+                  trap "popd" EXIT
+
+                  "$out/bin/launch.py" --skip-install "$buck{@}"
+                  EOF
+                    # below lie remnants of my attempt to make webui use similar paths as InvokeAI for models download
+                    # additions of such options in upstream is a welcome sign, however they're mostly ignored and therefore useless
+                    # TODO: check in 6 months, maybe it'll work
+                    # For now, your best bet is to use ZFS dataset with dedup enabled or make symlinks after the fact
+                    
+                    #--codeformer-models-path "\$mp/codeformer" \
+                    #--gfpgan-models-path "\$mp/gfpgan" --esrgan-models-path "\$mp/esrgan" \
+                    #--bsrgan-models-path "\$mp/bsrgan" --realesrgan-models-path "\$mp/realesrgan" \
+                    #--clip-models-path "\$mp/clip" 
+                  chmod +x flake-launch
+                  popd
+
+                  runHook postBuild
+            '';
+            installPhase = ''
+                  runHook preInstall
+
+                  rm -rf repositories/
+                  mkdir repositories
+                  pushd repositories
+                  ln -s ${inputs.stable-diffusion-repo}/ stable-diffusion-stability-ai
+                  ln -s ${taming-transformers}/ taming-transformers
+                  ln -s ${k_diffusion}/ k-diffusion
+                  ln -s ${codeformer}/ CodeFormer
+                  ln -s ${blip}/ BLIP
+                  popd
+                  runHook postInstall
+            '';
+          };
+        in
+        {
+          invokeai = {
+            amd = invokeaiF nixpkgsAmd;
+            default = invokeaiF nixpkgsNvidia;
+          };
+          webui = {
+            amd = webuiF nixpkgsAmd;
+            default = webuiF nixpkgsNvidia;
+          };
+        };
     };
 }

@@ -83,7 +83,7 @@ let
       };
     };
 in
-stdenv.mkDerivation rec {
+buildPythonPackage rec {
   pname = "codeformer";
   version = "0.1.2";
 
@@ -95,6 +95,7 @@ stdenv.mkDerivation rec {
   };
 
 
+  format = "other";
   buildPhase = ''
     mkdir -p $out/lib/python3.10/site-packages
     cp -R ./ $out/lib/python3.10/site-packages/codeformer/

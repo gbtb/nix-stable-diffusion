@@ -7,7 +7,7 @@ index 0240187..0570161 100644
  
  
 -ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-+ROOT_DIR = f'{os.getcwd()}/models/facelib'
++ROOT_DIR = os.environ.get('CODEFORMER_ROOT_DIR') #f'{os.getcwd()}/models/facelib'
  
  
  def download_pretrained_models(file_ids, save_path_root):
