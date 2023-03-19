@@ -1,12 +1,18 @@
 # Table of contents
 - [nix-stable-diffusion](#nix-stable-diffusion)
-  - [What's done](#whats-done)
+  * [What's done](#whats-done)
 - [How to use it?](#how-to-use-it)
-  - [InvokeAI](#invokeai)
-  - [stable-diffusion-webui aka 111AUTOMATIC111 fork](#stable-diffusion-webui-aka-111automatic111-fork)
-- [What's needed to be done](#whats-needed-to-be-done)
-- [Updates and versioning](#updates-and-versioning)
-- [Acknowledgements](#acknowledgements)
+  * [InvokeAI](#invokeai)
+  * [stable-diffusion-webui aka 111AUTOMATIC111 fork](#stable-diffusion-webui-aka-111automatic111-fork)
+  * [Hardware quirks](#hardware-quirks)
+    + [AMD](#amd)
+    + [Nvidia](#nvidia)
+- [What's (probably) needed to be done](#whats-probably-needed-to-be-done)
+- [Current versions](#current-versions)
+- [Meta](#meta)
+  * [Contributions](#contributions)
+  * [Acknowledgements](#acknowledgements)
+  * [Similar projects](#similar-projects)
 
 # nix-stable-diffusion
 Flake for running SD on NixOS
@@ -31,11 +37,11 @@ Flake for running SD on NixOS
 
 ## stable-diffusion-webui aka 111AUTOMATIC111 fork
 1. Clone repo
-1. Run `nix run .#webui.{default,nvidia,amd} -- "runtime folder for webui stuff" --ckpt-dir "folder with pre-downloaded main SD models"`, wait for packages to build
+1. Run `nix run .#webui.{default,nvidia,amd} -- --data-dir "runtime folder for webui stuff" --ckpt-dir "folder with pre-downloaded main SD models"`, wait for packages to build
     1. `.#webui.default` builds package which overrides bare minimum required for SD to run
     1. `.#webui.amd` builds package which overrides torch packages with ROCM-enabled bin versions
     1. `.#webui.nvidia` builds package with overlay explicitly setting `cudaSupport = true` for torch
-1. Webui is not proper python package by itself, so I had to make a multi-layered wrapper script which sets required env and args. `bin/flake-launch` is a top-level wrapper, which sets default args and is running by default. `bin/launch.py` is a thin wrapper around original launch.py which only sets PYTHONPATH with required packages. Both wrappers pass additional args further down the pipeline. To list all available args you may run `nix run .#webui.amd -- "" --help`.
+1. Webui is not a proper python package by itself, so I had to make a multi-layered wrapper script which sets required env and args. `bin/flake-launch` is a top-level wrapper, which sets default args and is running by default. `bin/launch.py` is a thin wrapper around original launch.py which only sets PYTHONPATH with required packages. Both wrappers pass additional args further down the pipeline. To list all available args you may run `nix run .#webui.amd -- --help`.
 
 ## Hardware quirks
 ### AMD
@@ -52,19 +58,16 @@ If you get an error `"hipErrorNoBinaryForGpu: Unable to find code object for all
 - [ ] Should create a PR to pynixify with "skip-errors mode" so that no ugly patches would be necessary
 - [ ] Increase reproducibility by replacing models, downloaded in runtime, to proper flake inputs
 
-# Updates and versioning
+# Current versions
 
-Current versions:
 - InvokeAI 2.3.1.post2
 - stable-diffusion-webui 12.03.2023
-
-I have no intention to keep up with development pace of these apps, especially the Automatic's fork :) . However, I will ocasionally update at least InvokeAI's flake. Considering versioning, I will try to follow semver with respect to submodules as well, which means major version bump for submodule = major version bump for this flake. 
 
 # Meta
 
 ## Contributions
-Contributions are welcome. TODO: Explain scope
-
+Contributions are welcome. I have no intention to keep up with development pace of these apps, especially the Automatic's fork :) . 
+However, I will ocasionally update at least InvokeAI's flake. Considering versioning, I will try to follow semver with respect to submodules as well, which means major version bump for submodule = major version bump for this flake. 
 ## Acknowledgements
 Many many thanks to https://github.com/cript0nauta/pynixify which generated all the boilerplate for missing python packages.  
 Also thanks to https://github.com/colemickens/stable-diffusion-flake and https://github.com/skogsbrus/stable-diffusion-nix-flake for inspiration and some useful code snippets.

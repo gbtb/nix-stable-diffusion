@@ -16,7 +16,7 @@
     };
     webui-repo = {
       #url = "github:AUTOMATIC1111/stable-diffusion-webui"; 
-      url = "github:gbtb/stable-diffusion-webui";
+      url = "github:gbtb/stable-diffusion-webui"; #instead of patching in flake, better use a fork. CRLF bullshit makes patching this repo almost impossible
       flake = false;
     };
   };
@@ -52,7 +52,7 @@
         pillow
         safetensors
       ]
-      ++ nixlib.optional (nvidia) [ xformers ]
+      ++ nixlib.optional (nvidia) [ xformers ] #probably won't fully work
       ++ nixlib.optional (!webui) [
         npyscreen
         huggingface-hub
@@ -217,6 +217,9 @@
                 makePythonHook = args: final.makeSetupHook ({ passthru.provides.setupHook = true; } // args);
                 pythonRelaxDepsHook = prev.callPackage
                   ({ wheel }:
+                    #upstream hook doesn't work properly with non-standard wheel names
+                    #which means that some packages from pip silently fail to be overriden
+                    #https://github.com/NixOS/nixpkgs/issues/198342
                     makePythonHook
                       {
                         name = "python-relax-deps-hook";
@@ -298,16 +301,13 @@
                   ln -s ../exec_launch.py launch.py
                   buck='$' #escaping $ inside shell inside shell is tricky
                   #next is an additional shell wrapper, which sets sensible default args for CLI
-                  #it requires path to a main directory
                   #additional arguments will be passed further
                   cat <<-EOF > flake-launch
                   #!/usr/bin/env bash 
                   pushd $out        #For some reason, fastapi only works when current workdir is set inside the repo
                   trap "popd" EXIT
 
-                  #here we have to escape all \$ that should not interpolate inside cat invocation
-                  #I'm pretty sure that it could be done with some clever nix subsitution, but ...
-                  "$out/bin/launch.py" --skip-install --data-dir "\$1" "$buck{@:2}"
+                  "$out/bin/launch.py" --skip-install "$buck{@}"
                   EOF
                     # below lie remnants of my attempt to make webui use similar paths as InvokeAI for models download
                     # additions of such options in upstream is a welcome sign, however they're mostly ignored and therefore useless
