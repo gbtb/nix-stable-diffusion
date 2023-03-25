@@ -24,7 +24,7 @@ buildPythonPackage rec {
   cargoDeps = rustPlatform.fetchCargoTarball {
     inherit src sourceRoot;
     name = sourceRoot;
-    hash = "sha256-0yE18d+jRs5IodacuBIsmUeZJcZobLz9oLWL+tZKY18=";
+    hash = "sha256-ylpf82NXlpo4+u5HZVYeJI8I6VBFAukzC7Er6BZk1Ik=";
     patches = [ ./cargo-lock.patch ];
   };
 
