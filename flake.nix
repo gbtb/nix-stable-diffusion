@@ -11,7 +11,7 @@
       flake = false;
     };
     invokeai-repo = {
-      url = "github:invoke-ai/InvokeAI?ref=v2.3.1.post2";
+      url = "github:invoke-ai/InvokeAI?ref=v2.3.5.post2";
       flake = false;
     };
     webui-repo = {
@@ -51,6 +51,7 @@
         realesrgan
         pillow
         safetensors
+        fastapi
       ]
       ++ nixlib.optional (nvidia) [ xformers ] #probably won't fully work
       ++ nixlib.optional (!webui) [
@@ -71,6 +72,11 @@
         clipseg
         getpass-asterisk
         picklescan
+        peft
+        packaging
+        python-multipart
+        fastapi-socketio
+        fastapi-events
       ]
       ++ nixlib.optional webui [
         pip
@@ -83,7 +89,6 @@
         yapf
         gdown
         lpips
-        fastapi
         lark
         analytics-python
         ffmpy
@@ -256,13 +261,13 @@
           nixpkgsNvidia = (nixpkgs_ { nvidia = true; });
           invokeaiF = nixpkgs: nixpkgs.python3.pkgs.buildPythonApplication {
             pname = "invokeai";
-            version = "2.3.1";
+            version = "2.3.5";
             src = invokeai-repo;
             format = "pyproject";
             meta.mainProgram = "invokeai";
             propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; nvidia = nixpkgs.nvidia; };
             nativeBuildInputs = [ nixpkgs.pkgs.pythonRelaxDepsHook ];
-            pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" ];
+            pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" "fastapi" ];
             pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
           };
           webuiF = nixpkgs: 
