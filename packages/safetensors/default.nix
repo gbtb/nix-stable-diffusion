@@ -6,11 +6,11 @@
 
 buildPythonPackage rec {
   pname = "safetensors";
-  version = "0.2.8";
+  version = "0.3.1";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "sha256-JyCyCmo4x5ncp5vXbK7qwvffWFqdT31Z+n4o7/nMsn8=";
+    sha256 = "571da56ff8d0bec8ae54923b621cda98d36dcef10feb36fd492c4d0c2cd0e869";
   }; 
 
   pythonRemoveDeps = [ "setuptools-rust" ];
@@ -24,7 +24,7 @@ buildPythonPackage rec {
   cargoDeps = rustPlatform.fetchCargoTarball {
     inherit src sourceRoot;
     name = sourceRoot;
-    hash = "sha256-R38eAck76q13L98GZTXOHliOcqiIih4xAERbdIzy0rY=";
+    hash = "sha256-IsePAiBsA/YjO1rhae49+4q67WdN5ieBMmjpzxRxxNE=";
     patches = [ ./cargo-lock.patch ];
   };
 

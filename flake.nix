@@ -167,6 +167,9 @@
             "xformers"
             "pyre-extensions"
             # "triton" TODO: nixpkgs is missing required llvm parts - mlir. https://github.com/NixOS/nixpkgs/pull/163878
+            "peft"
+            "fastapi-events"
+            "fastapi-socketio"
           ];
         in
         {
