@@ -123,6 +123,35 @@
             };
           });
         };
+      overlay_invoke = nixpkgs: pythonPackages:
+        let
+          ifNotMinVersion = pkg: ver: overlay: if (
+            nixlib.versionOlder pkg.version ver
+          ) then pkg.overrideAttrs overlay else pkg;
+        in {
+          huggingface-hub = ifNotMinVersion pythonPackages.huggingface-hub
+            "0.13.2" (
+          old: rec {
+            version = "0.14.1";
+            src = nixpkgs.fetchFromGitHub {
+              owner = "huggingface";
+              repo = "huggingface_hub";
+              rev = "refs/tags/v${version}";
+              hash = "sha256-+BtXi+O+Ef4p4b+8FJCrZFsxX22ZYOPXylexFtsldnA=";
+            };
+            propagatedBuildInputs = old.propagatedBuildInputs ++ [pythonPackages.fsspec];
+          });
+          transformers = ifNotMinVersion pythonPackages.transformers
+            "4.26" (
+          old: rec {
+            version = "4.28.1";
+              src = nixpkgs.fetchFromGitHub {
+              inherit (old.src) owner repo;
+              rev = "refs/tags/v${version}";
+              hash = "sha256-FmiuWfoFZjZf1/GbE6PmSkeshWWh+6nDj2u2PMSeDk0=";
+            };
+          });
+        };
       overlay_pynixify = self:
         let
           rm = d: d.overrideAttrs (old: {
@@ -251,6 +280,7 @@
                     optional amd (overlay_amd prev python-super) //
                     optional nvidia (overlay_nvidia prev python-super) //
                     optional webui (overlay_webui prev python-super) //
+                    optional (!webui) (overlay_invoke prev python-super) //
                     (overlay_pynixify python-self);
                 };
               })
