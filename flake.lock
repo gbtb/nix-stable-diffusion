@@ -3,16 +3,16 @@
     "invokeai-repo": {
       "flake": false,
       "locked": {
-        "lastModified": 1691884173,
-        "narHash": "sha256-hRllz3py6bUM4TElCWjUs+T+fvqnbmhmMfjwb465bAA=",
+        "lastModified": 1693503293,
+        "narHash": "sha256-Lv0k06odM+GiUjAAl07pVXtPo/VM9WlwS345ArIbVCI=",
         "owner": "invoke-ai",
         "repo": "InvokeAI",
-        "rev": "9afb5d6ace4837cebe4e240d8916b6a7222b2272",
+        "rev": "a74e2108bbade39a3de3589697df21019181f137",
         "type": "github"
       },
       "original": {
         "owner": "invoke-ai",
-        "ref": "v3.0.2post1",
+        "ref": "v3.1.0",
         "repo": "InvokeAI",
         "type": "github"
       }

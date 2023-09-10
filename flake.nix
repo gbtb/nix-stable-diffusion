@@ -11,7 +11,7 @@
       flake = false;
     };
     invokeai-repo = {
-      url = "github:invoke-ai/InvokeAI?ref=v3.0.2post1";
+      url = "github:invoke-ai/InvokeAI?ref=v3.1.0";
       flake = false;
     };
     webui-repo = {
@@ -59,10 +59,6 @@
         torchsde
         compel
         send2trash
-        flask
-        flask-socketio
-        flask-cors
-        eventlet
         clipseg
         picklescan
         peft
@@ -387,7 +383,7 @@
           nixpkgsNvidia = (nixpkgs_ { nvidia = true; });
           invokeaiF = nixpkgs: nixpkgs.python3.pkgs.buildPythonApplication {
             pname = "invokeai";
-            version = "3.0.2";
+            version = "3.1.0";
             src = invokeai-repo;
             format = "pyproject";
             meta.mainProgram = "invokeai";
@@ -396,15 +392,13 @@
             pythonRelaxDeps = [
               "torch"
               "pytorch-lightning"
-              "flask-socketio"
-              "flask"
               "dnspython"
               "uvicorn"
               "rich"
               "test-tube"
               "scikit-image"
             ];
-            pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
+            pythonRemoveDeps = [ "opencv-python" "pyreadline3" ];
             postPatch = ''
               # Add subprocess to the imports
               substituteInPlace ./invokeai/backend/install/invokeai_configure.py --replace \
