@@ -11,7 +11,7 @@
       flake = false;
     };
     invokeai-repo = {
-      url = "github:invoke-ai/InvokeAI?ref=v2.3.5.post2";
+      url = "github:invoke-ai/InvokeAI?ref=v3.0.2post1";
       flake = false;
     };
     webui-repo = {
@@ -32,20 +32,15 @@
         albumentations
         opencv4
         pudb
-        imageio
-        imageio-ffmpeg
         pytorch-lightning
         omegaconf
         test-tube
         streamlit
-        protobuf
         einops
         taming-transformers-rom1504
         torch-fidelity
         torchmetrics
         transformers
-        kornia
-        k-diffusion
         diffusers
         # following packages not needed for vanilla SD but used by both UIs
         realesrgan
@@ -67,16 +62,30 @@
         flask
         flask-socketio
         flask-cors
-        gfpgan
         eventlet
         clipseg
-        getpass-asterisk
         picklescan
         peft
         packaging
         python-multipart
         fastapi-socketio
         fastapi-events
+        dynamicprompts
+        controlnet-aux
+        easing-functions
+        invisible-watermark
+        matplotlib
+        mediapipe
+        onnx
+        onnxruntime
+        pydantic
+        pympler
+        pyperclip
+        uvicorn
+        uvicorn.optional-dependencies.standard
+        rich
+        test-tube
+        protobuf3
       ]
       ++ nixlib.optional webui [
         pip
@@ -103,6 +112,11 @@
         psutil
         openclip
         blendmodes
+        imageio
+        imageio-ffmpeg
+        k-diffusion
+        kornia
+        protobuf
       ];
       overlay_default = nixpkgs: pythonPackages:
         {
@@ -294,17 +308,17 @@
           nixpkgsNvidia = (nixpkgs_ { nvidia = true; });
           invokeaiF = nixpkgs: nixpkgs.python3.pkgs.buildPythonApplication {
             pname = "invokeai";
-            version = "2.3.5";
+            version = "3.0.2";
             src = invokeai-repo;
             format = "pyproject";
             meta.mainProgram = "invokeai";
             propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; nvidia = nixpkgs.nvidia; };
             nativeBuildInputs = [ nixpkgs.pkgs.pythonRelaxDepsHook ];
-            pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" "fastapi" ];
+            pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" "uvicorn" ];
             pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
             postPatch = ''
               # Add subprocess to the imports
-              substituteInPlace ./ldm/invoke/config/invokeai_configure.py --replace \
+              substituteInPlace ./invokeai/backend/install/invokeai_configure.py --replace \
               'import shutil' \
 '
 import shutil
@@ -313,7 +327,7 @@ import subprocess
               # shutil.copytree will inherit the permissions of files in the /nix/store
               # which are read only, so we subprocess.call cp instead and tell it not to
               # preserve the mode
-              substituteInPlace ./ldm/invoke/config/invokeai_configure.py --replace \
+              substituteInPlace ./invokeai/backend/install/invokeai_configure.py --replace \
                 "shutil.copytree(configs_src, configs_dest, dirs_exist_ok=True)" \
                 "subprocess.call(f'cp -r --no-preserve=mode {configs_src}/* {configs_dest}', shell=True)"
             '';
