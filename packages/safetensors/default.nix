@@ -2,7 +2,7 @@
 # If you run pynixify again, the file will be either overwritten or
 # deleted, and you will lose the changes you made to it.
 
-{ buildPythonPackage, fetchPypi, lib, torch, fetchFromGitHub, pyparsing, transformers, diffusers, setuptools-rust, rustPlatform }:
+{ buildPythonPackage, fetchPypi, lib, torch, fetchFromGitHub, pyparsing, setuptools-rust, rustPlatform }:
 
 buildPythonPackage rec {
   pname = "safetensors";
@@ -19,7 +19,7 @@ buildPythonPackage rec {
     rust.cargo
     rust.rustc
   ]);
-  propagatedBuildInputs = [ pyparsing torch transformers diffusers setuptools-rust ];
+  propagatedBuildInputs = [ pyparsing torch setuptools-rust ];
   sourceRoot = "${pname}-${version}";
   cargoDeps = rustPlatform.fetchCargoTarball {
     inherit src sourceRoot;
