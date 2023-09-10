@@ -143,6 +143,7 @@
             nixlib.versionOlder pkg.version ver
           ) then pkg.overrideAttrs overlay else pkg;
         in {
+          protobuf = pythonPackages.protobuf3;
           huggingface-hub = ifNotMinVersion pythonPackages.huggingface-hub
             "0.13.2" (
           old: rec {
