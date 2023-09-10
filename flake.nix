@@ -142,14 +142,13 @@
         in {
           protobuf = pythonPackages.protobuf3;
           huggingface-hub = ifNotMinVersion pythonPackages.huggingface-hub
-            "0.13.2" (
+            "0.16.4" (
           old: rec {
-            version = "0.14.1";
-            src = nixpkgs.fetchFromGitHub {
-              owner = "huggingface";
-              repo = "huggingface_hub";
-              rev = "refs/tags/v${version}";
-              hash = "sha256-+BtXi+O+Ef4p4b+8FJCrZFsxX22ZYOPXylexFtsldnA=";
+            version = "0.16.4";
+            src = nixpkgs.fetchPypi {
+              pname = fixUnderscore old.pname;
+              inherit version;
+              sha256 = "608c7d4f3d368b326d1747f91523dbd1f692871e8e2e7a4750314a2dd8b63e14";
             };
             propagatedBuildInputs = old.propagatedBuildInputs ++ [pythonPackages.fsspec];
           });
