@@ -269,6 +269,21 @@
             nativeBuildInputs = [ nixpkgs.pkgs.pythonRelaxDepsHook ];
             pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" "fastapi" ];
             pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
+            postPatch = ''
+              # Add subprocess to the imports
+              substituteInPlace ./ldm/invoke/config/invokeai_configure.py --replace \
+              'import shutil' \
+'
+import shutil
+import subprocess
+'
+              # shutil.copytree will inherit the permissions of files in the /nix/store
+              # which are read only, so we subprocess.call cp instead and tell it not to
+              # preserve the mode
+              substituteInPlace ./ldm/invoke/config/invokeai_configure.py --replace \
+                "shutil.copytree(configs_src, configs_dest, dirs_exist_ok=True)" \
+                "subprocess.call(f'cp -r --no-preserve=mode {configs_src}/* {configs_dest}', shell=True)"
+            '';
           };
           webuiF = nixpkgs: 
           let
