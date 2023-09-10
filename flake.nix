@@ -137,11 +137,12 @@
             };
           });
         };
-      overlay_invoke = nixpkgs: pythonPackages:
+      overlay_invoke = nixpkgs: pythonPackages: pythonSelf:
         let
           ifNotMinVersion = pkg: ver: overlay: if (
             nixlib.versionOlder pkg.version ver
           ) then pkg.overrideAttrs overlay else pkg;
+          fixUnderscore = pname: nixlib.stringAsChars (x: if x == "-" then "_" else x) pname;
         in {
           protobuf = pythonPackages.protobuf3;
           huggingface-hub = ifNotMinVersion pythonPackages.huggingface-hub
@@ -157,13 +158,84 @@
             propagatedBuildInputs = old.propagatedBuildInputs ++ [pythonPackages.fsspec];
           });
           transformers = ifNotMinVersion pythonPackages.transformers
-            "4.26" (
+            "4.31.0" (
           old: rec {
-            version = "4.28.1";
-              src = nixpkgs.fetchFromGitHub {
+            version = "4.31.0";
+            src = nixpkgs.fetchFromGitHub {
               inherit (old.src) owner repo;
               rev = "refs/tags/v${version}";
-              hash = "sha256-FmiuWfoFZjZf1/GbE6PmSkeshWWh+6nDj2u2PMSeDk0=";
+              hash = "sha256-YbLI/CkRto8G4bV7ijUkB/0cc7LkfNBQxL1iNv8aWW4=";
+            };
+            propagatedBuildInputs = old.propagatedBuildInputs ++ [
+              pythonSelf.safetensors
+            ];
+          });
+          rich = ifNotMinVersion pythonPackages.rich
+            "13.3" (
+          old: rec {
+            version = "13.3.5";
+            src = nixpkgs.fetchFromGitHub {
+              inherit (old.src) owner repo;
+              rev = "refs/tags/v${version}";
+              hash = "sha256-PnyO5u0gxfYKT6xr0k3H0lbLl9wKPl6oxR1mM9A0Hys=";
+            };
+          });
+          test-tube = pythonPackages.test-tube.overrideAttrs (old: rec {
+            version = "0.7.5";
+            src = nixpkgs.fetchPypi {
+              pname = fixUnderscore old.pname;
+              inherit version;
+              sha256 = "1379c33eb8cde3e9b36610f87da0f16c2e06496b1cfebac473df4e7be2faa124";
+            };
+          });
+          scikit-image = ifNotMinVersion pythonPackages.scikitimage
+            "0.21.0" (
+          old: rec {
+            version = "0.21.0";
+            format = "pyproject";
+            src = nixpkgs.fetchPypi {
+              pname = fixUnderscore old.pname;
+              inherit version;
+              sha256 = "b33e823c54e6f11873ea390ee49ef832b82b9f70752c8759efd09d5a4e3d87f0";
+            };
+            patches = [
+            ];
+            nativeBuildInputs = with pythonPackages; [
+              nixpkgs.meson
+              wrapPython
+              cython
+              meson-python
+              numpy
+              packaging
+              pythran
+              setuptools
+              wheel
+            ];
+            propagatedBuildInputs = with pythonPackages; [
+              imageio
+              pythonSelf.lazy-loader
+              matplotlib
+              networkx
+              numpy
+              packaging
+              pillow
+              pywavelets
+              scipy
+              tifffile
+            ];
+            postPatch = ''
+              patchShebangs skimage/_build_utils/{version,cythoner}.py
+
+              substituteInPlace pyproject.toml \
+                --replace "numpy==" "numpy>="
+            '';
+          });
+          fastapi = pythonPackages.fastapi.overrideAttrs (old: rec {
+            version = "0.88.0";
+            src = nixpkgs.fetchPypi {
+              inherit (old) pname;
+              inherit version;
+              sha256 = "915bf304180a0e7c5605ec81097b7d4cd8826ff87a02bb198e336fb9f3b5ff02";
             };
           });
         };
@@ -216,6 +288,7 @@
             "fastapi-socketio"
             "dynamicprompts"
             "easing-functions"
+            "lazy-loader"
           ];
         in
         {
@@ -300,7 +373,7 @@
                     optional amd (overlay_amd prev python-super) //
                     optional nvidia (overlay_nvidia prev python-super) //
                     optional webui (overlay_webui prev python-super) //
-                    optional (!webui) (overlay_invoke prev python-super) //
+                    optional (!webui) (overlay_invoke prev python-super python-self) //
                     (overlay_pynixify python-self);
                 };
               })
