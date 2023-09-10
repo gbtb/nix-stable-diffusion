@@ -7,11 +7,11 @@
 
 buildPythonPackage rec {
   pname = "timm";
-  version = "0.6.11";
+  version = "0.6.13";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "199zgg574gijw52jn4fhfzaqlbwhq0z8kav4k34xifssnr18hmh9";
+    sha256 = "745c54f7b7985a18e08bd66c997b018c1c3fef99bbb8c018879a6f85571782f5";
   };
 
   propagatedBuildInputs = [ torch torchvision pyyaml huggingface-hub ];

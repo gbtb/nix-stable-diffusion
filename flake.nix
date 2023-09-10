@@ -213,6 +213,8 @@
             "peft"
             "fastapi-events"
             "fastapi-socketio"
+            "dynamicprompts"
+            "easing-functions"
           ];
         in
         {
@@ -228,6 +230,9 @@
           realesrgan = rmCallPackage ./packages/realesrgan { opencv-python = self.opencv4; };
           clipseg = rmCallPackage ./packages/clipseg { opencv-python = self.opencv4; };
           k-diffusion = callPackage ./packages/k-diffusion { clean-fid = self.clean-fid; };
+          controlnet-aux = rmCallPackage ./packages/controlnet-aux { opencv-python = self.opencv4; };
+          invisible-watermark = rmCallPackage ./packages/invisible-watermark { opencv-python = self.opencv4; };
+          mediapipe = callPackage ./packages/mediapipe { opencv-contrib-python = self.opencv4; };
         } // mapCallPackage simplePackages;
       overlay_amd = nixpkgs: pythonPackages:
         rec {
