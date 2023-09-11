@@ -170,66 +170,66 @@
               pythonSelf.safetensors
             ];
           });
-          rich = ifNotMinVersion pythonPackages.rich
-            "13.3" (
-          old: rec {
-            version = "13.3.5";
-            src = nixpkgs.fetchFromGitHub {
-              inherit (old.src) owner repo;
-              rev = "refs/tags/v${version}";
-              hash = "sha256-PnyO5u0gxfYKT6xr0k3H0lbLl9wKPl6oxR1mM9A0Hys=";
-            };
-          });
-          test-tube = pythonPackages.test-tube.overrideAttrs (old: rec {
-            version = "0.7.5";
-            src = nixpkgs.fetchPypi {
-              pname = fixUnderscore old.pname;
-              inherit version;
-              sha256 = "1379c33eb8cde3e9b36610f87da0f16c2e06496b1cfebac473df4e7be2faa124";
-            };
-          });
-          scikit-image = ifNotMinVersion pythonPackages.scikitimage
-            "0.21.0" (
-          old: rec {
-            version = "0.21.0";
-            format = "pyproject";
-            src = nixpkgs.fetchPypi {
-              pname = fixUnderscore old.pname;
-              inherit version;
-              sha256 = "b33e823c54e6f11873ea390ee49ef832b82b9f70752c8759efd09d5a4e3d87f0";
-            };
-            patches = [
-            ];
-            nativeBuildInputs = with pythonPackages; [
-              nixpkgs.meson
-              wrapPython
-              cython
-              meson-python
-              numpy
-              packaging
-              pythran
-              setuptools
-              wheel
-            ];
-            propagatedBuildInputs = with pythonPackages; [
-              imageio
-              pythonSelf.lazy-loader
-              matplotlib
-              networkx
-              numpy
-              packaging
-              pillow
-              pywavelets
-              scipy
-              tifffile
-            ];
-            postPatch = ''
-              patchShebangs skimage/_build_utils/{version,cythoner}.py
-
-              substituteInPlace pyproject.toml \
-                --replace "numpy==" "numpy>="
-            '';
-          });
+#           rich = ifNotMinVersion pythonPackages.rich
+#             "13.3" (
+#           old: rec {
+#             version = "13.3.5";
+#             src = nixpkgs.fetchFromGitHub {
+#               inherit (old.src) owner repo;
+#               rev = "refs/tags/v${version}";
+#               hash = "sha256-PnyO5u0gxfYKT6xr0k3H0lbLl9wKPl6oxR1mM9A0Hys=";
+#             };
+#           });
+#           test-tube = pythonPackages.test-tube.overrideAttrs (old: rec {
+#             version = "0.7.5";
+#             src = nixpkgs.fetchPypi {
+#               pname = fixUnderscore old.pname;
+#               inherit version;
+#               sha256 = "1379c33eb8cde3e9b36610f87da0f16c2e06496b1cfebac473df4e7be2faa124";
+#             };
+#           });
+#           scikit-image = ifNotMinVersion pythonPackages.scikitimage
+#             "0.21.0" (
+#           old: rec {
+#             version = "0.21.0";
+#             format = "pyproject";
+#             src = nixpkgs.fetchPypi {
+#               pname = fixUnderscore old.pname;
+#               inherit version;
+#               sha256 = "b33e823c54e6f11873ea390ee49ef832b82b9f70752c8759efd09d5a4e3d87f0";
+#             };
+#             patches = [
+#             ];
+#             nativeBuildInputs = with pythonPackages; [
+#               nixpkgs.meson
+#               wrapPython
+#               cython
+#               meson-python
+#               numpy
+#               packaging
+#               pythran
+#               setuptools
+#               wheel
+#             ];
+#             propagatedBuildInputs = with pythonPackages; [
+#               imageio
+#               pythonSelf.lazy-loader
+#               matplotlib
+#               networkx
+#               numpy
+#               packaging
+#               pillow
+#               pywavelets
+#               scipy
+#               tifffile
+#             ];
+#             postPatch = ''
+#               patchShebangs skimage/_build_utils/{version,cythoner}.py
+#
+#               substituteInPlace pyproject.toml \
+#                 --replace "numpy==" "numpy>="
+#             '';
+#           });
           fastapi = pythonPackages.fastapi.overrideAttrs (old: rec {
             version = "0.88.0";
             src = nixpkgs.fetchPypi {
@@ -393,7 +393,17 @@
             meta.mainProgram = "invokeai";
             propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; nvidia = nixpkgs.nvidia; };
             nativeBuildInputs = [ nixpkgs.pkgs.pythonRelaxDepsHook ];
-            pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" "uvicorn" ];
+            pythonRelaxDeps = [
+              "torch"
+              "pytorch-lightning"
+              "flask-socketio"
+              "flask"
+              "dnspython"
+              "uvicorn"
+              "rich"
+              "test-tube"
+              "scikit-image"
+            ];
             pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
             postPatch = ''
               # Add subprocess to the imports
