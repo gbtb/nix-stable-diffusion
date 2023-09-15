@@ -11,7 +11,7 @@
       flake = false;
     };
     invokeai-repo = {
-      url = "github:invoke-ai/InvokeAI?ref=v3.1.0";
+      url = "github:invoke-ai/InvokeAI?ref=v3.1.1";
       flake = false;
     };
     webui-repo = {
@@ -82,6 +82,7 @@
         rich
         test-tube
         protobuf3
+        semver
       ]
       ++ nixlib.optional webui [
         pip
@@ -382,7 +383,7 @@
           nixpkgsNvidia = (nixpkgs_ { nvidia = true; });
           invokeaiF = nixpkgs: nixpkgs.python3.pkgs.buildPythonApplication {
             pname = "invokeai";
-            version = "3.1.0";
+            version = "3.1.1";
             src = invokeai-repo;
             format = "pyproject";
             meta.mainProgram = "invokeai";
