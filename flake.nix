@@ -234,6 +234,21 @@
               sha256 = "915bf304180a0e7c5605ec81097b7d4cd8826ff87a02bb198e336fb9f3b5ff02";
             };
           });
+          semver = ifNotMinVersion pythonPackages.semver
+            "3.0.1" (
+          old: rec {
+            version = "3.0.1";
+            format = "pyproject";
+            src = nixpkgs.fetchFromGitHub {
+              inherit (old.src) owner repo;
+              rev = "refs/tags/${version}";
+              hash = "sha256-vVi0+Pq8VpYMy73JSrvi9ranOzvFaHpcPZRt8gMkkFs=";
+            };
+            nativeBuildInputs = with pythonPackages; [
+              setuptools
+              setuptools-scm
+            ];
+          });
         };
       overlay_pynixify = self:
         let
