@@ -6,14 +6,11 @@
 
 buildPythonPackage rec {
   pname = "compel";
-  version = "0.1.7";
+  version = "1.1.5";
 
-  src = fetchFromGitHub {
+  src = fetchPypi {
     inherit pname version;
-    owner = "damian0815";
-    repo = pname;
-    rev = "085d657356714fbc972f12273ec7803242d602a0";
-    sha256 = "sha256-v6tkyOH0cBQWPPmi9AY9nvYwaT8QxNpJneB/YWSdlYc=";
+    sha256 = "932a4448553983db33f4893516239ed5001b384cc211e32841e80b1f94dcd0f6";
   };
 
   propagatedBuildInputs = [ pyparsing torch transformers diffusers ];

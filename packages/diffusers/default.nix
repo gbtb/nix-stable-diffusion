@@ -7,11 +7,11 @@
 
 buildPythonPackage rec {
   pname = "diffusers";
-  version = "0.13.1";
+  version = "0.16.1";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "0k4f9zya92jv4msdm66jaab29avxd6ba9c7aqc2mp7sdycg7mdi9";
+    sha256 = "4cd7400382c86d85e08425550de1b1a81d4ed03623fbd4bcd8377864d9c46efe";
   };
 
   propagatedBuildInputs =

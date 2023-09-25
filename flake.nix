@@ -11,7 +11,7 @@
       flake = false;
     };
     invokeai-repo = {
-      url = "github:invoke-ai/InvokeAI?ref=v2.3.1.post2";
+      url = "github:invoke-ai/InvokeAI?ref=v2.3.5.post2";
       flake = false;
     };
     webui-repo = {
@@ -51,6 +51,7 @@
         realesrgan
         pillow
         safetensors
+        fastapi
       ]
       ++ nixlib.optional (nvidia) [ xformers ] #probably won't fully work
       ++ nixlib.optional (!webui) [
@@ -71,6 +72,11 @@
         clipseg
         getpass-asterisk
         picklescan
+        peft
+        packaging
+        python-multipart
+        fastapi-socketio
+        fastapi-events
       ]
       ++ nixlib.optional webui [
         pip
@@ -83,7 +89,6 @@
         yapf
         gdown
         lpips
-        fastapi
         lark
         analytics-python
         ffmpy
@@ -115,6 +120,35 @@
               repo = "transformers";
               rev = "refs/tags/v4.19.2";
               hash = "sha256-9r/1vW7Rhv9+Swxdzu5PTnlQlT8ofJeZamHf5X4ql8w=";
+            };
+          });
+        };
+      overlay_invoke = nixpkgs: pythonPackages:
+        let
+          ifNotMinVersion = pkg: ver: overlay: if (
+            nixlib.versionOlder pkg.version ver
+          ) then pkg.overrideAttrs overlay else pkg;
+        in {
+          huggingface-hub = ifNotMinVersion pythonPackages.huggingface-hub
+            "0.13.2" (
+          old: rec {
+            version = "0.14.1";
+            src = nixpkgs.fetchFromGitHub {
+              owner = "huggingface";
+              repo = "huggingface_hub";
+              rev = "refs/tags/v${version}";
+              hash = "sha256-+BtXi+O+Ef4p4b+8FJCrZFsxX22ZYOPXylexFtsldnA=";
+            };
+            propagatedBuildInputs = old.propagatedBuildInputs ++ [pythonPackages.fsspec];
+          });
+          transformers = ifNotMinVersion pythonPackages.transformers
+            "4.26" (
+          old: rec {
+            version = "4.28.1";
+              src = nixpkgs.fetchFromGitHub {
+              inherit (old.src) owner repo;
+              rev = "refs/tags/v${version}";
+              hash = "sha256-FmiuWfoFZjZf1/GbE6PmSkeshWWh+6nDj2u2PMSeDk0=";
             };
           });
         };
@@ -162,6 +196,9 @@
             "xformers"
             "pyre-extensions"
             # "triton" TODO: nixpkgs is missing required llvm parts - mlir. https://github.com/NixOS/nixpkgs/pull/163878
+            "peft"
+            "fastapi-events"
+            "fastapi-socketio"
           ];
         in
         {
@@ -243,6 +280,7 @@
                     optional amd (overlay_amd prev python-super) //
                     optional nvidia (overlay_nvidia prev python-super) //
                     optional webui (overlay_webui prev python-super) //
+                    optional (!webui) (overlay_invoke prev python-super) //
                     (overlay_pynixify python-self);
                 };
               })
@@ -256,14 +294,29 @@
           nixpkgsNvidia = (nixpkgs_ { nvidia = true; });
           invokeaiF = nixpkgs: nixpkgs.python3.pkgs.buildPythonApplication {
             pname = "invokeai";
-            version = "2.3.1";
+            version = "2.3.5";
             src = invokeai-repo;
             format = "pyproject";
             meta.mainProgram = "invokeai";
             propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; nvidia = nixpkgs.nvidia; };
             nativeBuildInputs = [ nixpkgs.pkgs.pythonRelaxDepsHook ];
-            pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" ];
+            pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" "fastapi" ];
             pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
+            postPatch = ''
+              # Add subprocess to the imports
+              substituteInPlace ./ldm/invoke/config/invokeai_configure.py --replace \
+              'import shutil' \
+'
+import shutil
+import subprocess
+'
+              # shutil.copytree will inherit the permissions of files in the /nix/store
+              # which are read only, so we subprocess.call cp instead and tell it not to
+              # preserve the mode
+              substituteInPlace ./ldm/invoke/config/invokeai_configure.py --replace \
+                "shutil.copytree(configs_src, configs_dest, dirs_exist_ok=True)" \
+                "subprocess.call(f'cp -r --no-preserve=mode {configs_src}/* {configs_dest}', shell=True)"
+            '';
           };
           webuiF = nixpkgs: 
           let
