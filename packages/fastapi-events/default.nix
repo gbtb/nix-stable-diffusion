@@ -2,23 +2,18 @@
 , buildPythonPackage
 , fetchPypi
 , pythonOlder
-, starlette
 }:
 
 buildPythonPackage rec {
   pname = "fastapi-events";
-  version = "0.6.0";
+  version = "0.8.0";
 
   disabled = pythonOlder "3.7";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "2380cdc3e30dc898d6b721d623c575c6f5b05ee35a3ee05adf0b90b12b9ed1f9";
+    sha256 = "55e7bf487e5c895e44630c11f0b12bd04e52aa8ecafcdc14ff9a4de4fb1cdf90";
   };
-
-  propagatedBuildInputs = [
-    starlette
-  ];
 
   # TODO FIXME
   doCheck = false;

@@ -11,7 +11,7 @@
       flake = false;
     };
     invokeai-repo = {
-      url = "github:invoke-ai/InvokeAI?ref=v2.3.5.post2";
+      url = "github:invoke-ai/InvokeAI?ref=v3.1.1";
       flake = false;
     };
     webui-repo = {
@@ -32,20 +32,15 @@
         albumentations
         opencv4
         pudb
-        imageio
-        imageio-ffmpeg
         pytorch-lightning
         omegaconf
         test-tube
         streamlit
-        protobuf
         einops
         taming-transformers-rom1504
         torch-fidelity
         torchmetrics
         transformers
-        kornia
-        k-diffusion
         diffusers
         # following packages not needed for vanilla SD but used by both UIs
         realesrgan
@@ -64,19 +59,30 @@
         torchsde
         compel
         send2trash
-        flask
-        flask-socketio
-        flask-cors
-        gfpgan
-        eventlet
         clipseg
-        getpass-asterisk
         picklescan
         peft
         packaging
         python-multipart
         fastapi-socketio
         fastapi-events
+        dynamicprompts
+        controlnet-aux
+        easing-functions
+        invisible-watermark
+        matplotlib
+        mediapipe
+        onnx
+        onnxruntime
+        pydantic
+        pympler
+        pyperclip
+        uvicorn
+        uvicorn.optional-dependencies.standard
+        rich
+        test-tube
+        protobuf3
+        semver
       ]
       ++ nixlib.optional webui [
         pip
@@ -103,6 +109,11 @@
         psutil
         openclip
         blendmodes
+        imageio
+        imageio-ffmpeg
+        k-diffusion
+        kornia
+        protobuf
       ];
       overlay_default = nixpkgs: pythonPackages:
         {
@@ -123,33 +134,120 @@
             };
           });
         };
-      overlay_invoke = nixpkgs: pythonPackages:
+      overlay_invoke = nixpkgs: pythonPackages: pythonSelf:
         let
           ifNotMinVersion = pkg: ver: overlay: if (
             nixlib.versionOlder pkg.version ver
           ) then pkg.overrideAttrs overlay else pkg;
+          fixUnderscore = pname: nixlib.stringAsChars (x: if x == "-" then "_" else x) pname;
         in {
+          protobuf = pythonPackages.protobuf3;
           huggingface-hub = ifNotMinVersion pythonPackages.huggingface-hub
-            "0.13.2" (
+            "0.16.4" (
           old: rec {
-            version = "0.14.1";
-            src = nixpkgs.fetchFromGitHub {
-              owner = "huggingface";
-              repo = "huggingface_hub";
-              rev = "refs/tags/v${version}";
-              hash = "sha256-+BtXi+O+Ef4p4b+8FJCrZFsxX22ZYOPXylexFtsldnA=";
+            version = "0.16.4";
+            src = nixpkgs.fetchPypi {
+              pname = fixUnderscore old.pname;
+              inherit version;
+              sha256 = "608c7d4f3d368b326d1747f91523dbd1f692871e8e2e7a4750314a2dd8b63e14";
             };
             propagatedBuildInputs = old.propagatedBuildInputs ++ [pythonPackages.fsspec];
           });
           transformers = ifNotMinVersion pythonPackages.transformers
-            "4.26" (
+            "4.31.0" (
           old: rec {
-            version = "4.28.1";
-              src = nixpkgs.fetchFromGitHub {
+            version = "4.31.0";
+            src = nixpkgs.fetchFromGitHub {
               inherit (old.src) owner repo;
               rev = "refs/tags/v${version}";
-              hash = "sha256-FmiuWfoFZjZf1/GbE6PmSkeshWWh+6nDj2u2PMSeDk0=";
+              hash = "sha256-YbLI/CkRto8G4bV7ijUkB/0cc7LkfNBQxL1iNv8aWW4=";
             };
+            propagatedBuildInputs = old.propagatedBuildInputs ++ [
+              pythonSelf.safetensors
+            ];
+          });
+#           rich = ifNotMinVersion pythonPackages.rich
+#             "13.3" (
+#           old: rec {
+#             version = "13.3.5";
+#             src = nixpkgs.fetchFromGitHub {
+#               inherit (old.src) owner repo;
+#               rev = "refs/tags/v${version}";
+#               hash = "sha256-PnyO5u0gxfYKT6xr0k3H0lbLl9wKPl6oxR1mM9A0Hys=";
+#             };
+#           });
+#           test-tube = pythonPackages.test-tube.overrideAttrs (old: rec {
+#             version = "0.7.5";
+#             src = nixpkgs.fetchPypi {
+#               pname = fixUnderscore old.pname;
+#               inherit version;
+#               sha256 = "1379c33eb8cde3e9b36610f87da0f16c2e06496b1cfebac473df4e7be2faa124";
+#             };
+#           });
+#           scikit-image = ifNotMinVersion pythonPackages.scikitimage
+#             "0.21.0" (
+#           old: rec {
+#             version = "0.21.0";
+#             format = "pyproject";
+#             src = nixpkgs.fetchPypi {
+#               pname = fixUnderscore old.pname;
+#               inherit version;
+#               sha256 = "b33e823c54e6f11873ea390ee49ef832b82b9f70752c8759efd09d5a4e3d87f0";
+#             };
+#             patches = [
+#             ];
+#             nativeBuildInputs = with pythonPackages; [
+#               nixpkgs.meson
+#               wrapPython
+#               cython
+#               meson-python
+#               numpy
+#               packaging
+#               pythran
+#               setuptools
+#               wheel
+#             ];
+#             propagatedBuildInputs = with pythonPackages; [
+#               imageio
+#               pythonSelf.lazy-loader
+#               matplotlib
+#               networkx
+#               numpy
+#               packaging
+#               pillow
+#               pywavelets
+#               scipy
+#               tifffile
+#             ];
+#             postPatch = ''
+#               patchShebangs skimage/_build_utils/{version,cythoner}.py
+#
+#               substituteInPlace pyproject.toml \
+#                 --replace "numpy==" "numpy>="
+#             '';
+#           });
+          fastapi = pythonPackages.fastapi.overrideAttrs (old: rec {
+            version = "0.88.0";
+            src = nixpkgs.fetchPypi {
+              inherit (old) pname;
+              inherit version;
+              sha256 = "915bf304180a0e7c5605ec81097b7d4cd8826ff87a02bb198e336fb9f3b5ff02";
+            };
+          });
+          semver = ifNotMinVersion pythonPackages.semver
+            "3.0.1" (
+          old: rec {
+            version = "3.0.1";
+            format = "pyproject";
+            src = nixpkgs.fetchFromGitHub {
+              inherit (old.src) owner repo;
+              rev = "refs/tags/${version}";
+              hash = "sha256-vVi0+Pq8VpYMy73JSrvi9ranOzvFaHpcPZRt8gMkkFs=";
+            };
+            nativeBuildInputs = with pythonPackages; [
+              setuptools
+              setuptools-scm
+            ];
           });
         };
       overlay_pynixify = self:
@@ -199,6 +297,9 @@
             "peft"
             "fastapi-events"
             "fastapi-socketio"
+            "dynamicprompts"
+            "easing-functions"
+            "lazy-loader"
           ];
         in
         {
@@ -214,6 +315,9 @@
           realesrgan = rmCallPackage ./packages/realesrgan { opencv-python = self.opencv4; };
           clipseg = rmCallPackage ./packages/clipseg { opencv-python = self.opencv4; };
           k-diffusion = callPackage ./packages/k-diffusion { clean-fid = self.clean-fid; };
+          controlnet-aux = rmCallPackage ./packages/controlnet-aux { opencv-python = self.opencv4; };
+          invisible-watermark = rmCallPackage ./packages/invisible-watermark { opencv-python = self.opencv4; };
+          mediapipe = callPackage ./packages/mediapipe { opencv-contrib-python = self.opencv4; };
         } // mapCallPackage simplePackages;
       overlay_amd = nixpkgs: pythonPackages:
         rec {
@@ -280,7 +384,7 @@
                     optional amd (overlay_amd prev python-super) //
                     optional nvidia (overlay_nvidia prev python-super) //
                     optional webui (overlay_webui prev python-super) //
-                    optional (!webui) (overlay_invoke prev python-super) //
+                    optional (!webui) (overlay_invoke prev python-super python-self) //
                     (overlay_pynixify python-self);
                 };
               })
@@ -294,17 +398,25 @@
           nixpkgsNvidia = (nixpkgs_ { nvidia = true; });
           invokeaiF = nixpkgs: nixpkgs.python3.pkgs.buildPythonApplication {
             pname = "invokeai";
-            version = "2.3.5";
+            version = "3.1.1";
             src = invokeai-repo;
             format = "pyproject";
             meta.mainProgram = "invokeai";
             propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; nvidia = nixpkgs.nvidia; };
             nativeBuildInputs = [ nixpkgs.pkgs.pythonRelaxDepsHook ];
-            pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" "fastapi" ];
-            pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
+            pythonRelaxDeps = [
+              "torch"
+              "pytorch-lightning"
+              "dnspython"
+              "uvicorn"
+              "rich"
+              "test-tube"
+              "scikit-image"
+            ];
+            pythonRemoveDeps = [ "opencv-python" "pyreadline3" ];
             postPatch = ''
               # Add subprocess to the imports
-              substituteInPlace ./ldm/invoke/config/invokeai_configure.py --replace \
+              substituteInPlace ./invokeai/backend/install/invokeai_configure.py --replace \
               'import shutil' \
 '
 import shutil
@@ -313,7 +425,7 @@ import subprocess
               # shutil.copytree will inherit the permissions of files in the /nix/store
               # which are read only, so we subprocess.call cp instead and tell it not to
               # preserve the mode
-              substituteInPlace ./ldm/invoke/config/invokeai_configure.py --replace \
+              substituteInPlace ./invokeai/backend/install/invokeai_configure.py --replace \
                 "shutil.copytree(configs_src, configs_dest, dirs_exist_ok=True)" \
                 "subprocess.call(f'cp -r --no-preserve=mode {configs_src}/* {configs_dest}', shell=True)"
             '';

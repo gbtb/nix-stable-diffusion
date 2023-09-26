@@ -6,11 +6,11 @@
 
 buildPythonPackage rec {
   pname = "compel";
-  version = "1.1.5";
+  version = "2.0.2";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "932a4448553983db33f4893516239ed5001b384cc211e32841e80b1f94dcd0f6";
+    sha256 = "2e9de64b6ea5f9df59f8fae7ebad9a57d1f369dcc953c8645880a49bb19c2c7c";
   };
 
   propagatedBuildInputs = [ pyparsing torch transformers diffusers ];
