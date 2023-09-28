@@ -58,7 +58,7 @@ If you get an error `"hipErrorNoBinaryForGpu: Unable to find code object for all
 
 # Current versions
 
-- InvokeAI 2.3.1.post2
+- InvokeAI 2.3.5.post2
 - stable-diffusion-webui 12.03.2023
 
 # Meta

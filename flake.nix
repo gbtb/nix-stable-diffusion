@@ -111,6 +111,11 @@
             pythonRelaxDeps = [ "protobuf" ];
           });
           scikit-image = pythonPackages.scikitimage;
+          moto = pythonPackages.moto.overrideAttrs (old: {
+            doCheck = false;
+            dontUsePytestCheck = true;
+
+          });
         };
       overlay_webui = nixpkgs: pythonPackages:
         {
@@ -125,32 +130,38 @@
         };
       overlay_invoke = nixpkgs: pythonPackages:
         let
-          ifNotMinVersion = pkg: ver: overlay: if (
-            nixlib.versionOlder pkg.version ver
-          ) then pkg.overrideAttrs overlay else pkg;
-        in {
+          ifNotMinVersion = pkg: ver: overlay:
+            if (
+              nixlib.versionOlder pkg.version ver
+            ) then pkg.overrideAttrs overlay else pkg;
+        in
+        {
           huggingface-hub = ifNotMinVersion pythonPackages.huggingface-hub
-            "0.13.2" (
-          old: rec {
-            version = "0.14.1";
-            src = nixpkgs.fetchFromGitHub {
-              owner = "huggingface";
-              repo = "huggingface_hub";
-              rev = "refs/tags/v${version}";
-              hash = "sha256-+BtXi+O+Ef4p4b+8FJCrZFsxX22ZYOPXylexFtsldnA=";
-            };
-            propagatedBuildInputs = old.propagatedBuildInputs ++ [pythonPackages.fsspec];
-          });
+            "0.13.2"
+            (
+              old: rec {
+                version = "0.14.1";
+                src = nixpkgs.fetchFromGitHub {
+                  owner = "huggingface";
+                  repo = "huggingface_hub";
+                  rev = "refs/tags/v${version}";
+                  hash = "sha256-+BtXi+O+Ef4p4b+8FJCrZFsxX22ZYOPXylexFtsldnA=";
+                };
+                propagatedBuildInputs = old.propagatedBuildInputs ++ [ pythonPackages.fsspec ];
+              }
+            );
           transformers = ifNotMinVersion pythonPackages.transformers
-            "4.26" (
-          old: rec {
-            version = "4.28.1";
-              src = nixpkgs.fetchFromGitHub {
-              inherit (old.src) owner repo;
-              rev = "refs/tags/v${version}";
-              hash = "sha256-FmiuWfoFZjZf1/GbE6PmSkeshWWh+6nDj2u2PMSeDk0=";
-            };
-          });
+            "4.26"
+            (
+              old: rec {
+                version = "4.28.1";
+                src = nixpkgs.fetchFromGitHub {
+                  inherit (old.src) owner repo;
+                  rev = "refs/tags/v${version}";
+                  hash = "sha256-FmiuWfoFZjZf1/GbE6PmSkeshWWh+6nDj2u2PMSeDk0=";
+                };
+              }
+            );
         };
       overlay_pynixify = self:
         let
@@ -243,49 +254,50 @@
     in
     let
       nixpkgs_ = { amd ? false, nvidia ? false, webui ? false }:
-        import inputs.nixpkgs {
-          inherit system;
-          config.allowUnfree = nvidia; #CUDA is unfree.
-          overlays = [
-            (final: prev:
-              let
-                optional = nixlib.optionalAttrs;
-                sl = (prev.streamlit.override ({ protobuf3 = prev.protobuf; }));
-                makePythonHook = args: final.makeSetupHook ({ passthru.provides.setupHook = true; } // args);
-                pythonRelaxDepsHook = prev.callPackage
-                  ({ wheel }:
-                    #upstream hook doesn't work properly with non-standard wheel names
-                    #which means that some packages from pip silently fail to be overriden
-                    #https://github.com/NixOS/nixpkgs/issues/198342
-                    makePythonHook
-                      {
-                        name = "python-relax-deps-hook";
-                        propagatedBuildInputs = [ wheel ];
-                        substitutions = {
-                          pythonInterpreter = nixlib.getExe prev.python3Packages.python;
-                        };
-                      } ./python-relax-deps-hook.sh)
-                  { wheel = prev.python3.pkgs.wheel; };
-              in
-              {
-                inherit pythonRelaxDepsHook;
-                streamlit = sl.overrideAttrs (old: {
-                  nativeBuildInputs = old.nativeBuildInputs ++ [ pythonRelaxDepsHook ];
-                  pythonRemoveDeps = [ "protobuf" ];
-                });
-                python3 = prev.python3.override {
-                  packageOverrides =
-                    python-self: python-super:
-                    (overlay_default prev python-super) //
-                    optional amd (overlay_amd prev python-super) //
-                    optional nvidia (overlay_nvidia prev python-super) //
-                    optional webui (overlay_webui prev python-super) //
-                    optional (!webui) (overlay_invoke prev python-super) //
-                    (overlay_pynixify python-self);
-                };
-              })
-          ];
-        } // { inherit nvidia; };
+        import inputs.nixpkgs
+          {
+            inherit system;
+            config.allowUnfree = nvidia; #CUDA is unfree.
+            overlays = [
+              (final: prev:
+                let
+                  optional = nixlib.optionalAttrs;
+                  sl = (prev.streamlit.override ({ protobuf3 = prev.protobuf; }));
+                  makePythonHook = args: final.makeSetupHook ({ passthru.provides.setupHook = true; } // args);
+                  pythonRelaxDepsHook = prev.callPackage
+                    ({ wheel }:
+                      #upstream hook doesn't work properly with non-standard wheel names
+                      #which means that some packages from pip silently fail to be overriden
+                      #https://github.com/NixOS/nixpkgs/issues/198342
+                      makePythonHook
+                        {
+                          name = "python-relax-deps-hook";
+                          propagatedBuildInputs = [ wheel ];
+                          substitutions = {
+                            pythonInterpreter = nixlib.getExe prev.python3Packages.python;
+                          };
+                        } ./python-relax-deps-hook.sh)
+                    { wheel = prev.python3.pkgs.wheel; };
+                in
+                {
+                  inherit pythonRelaxDepsHook;
+                  streamlit = sl.overrideAttrs (old: {
+                    nativeBuildInputs = old.nativeBuildInputs ++ [ pythonRelaxDepsHook ];
+                    pythonRemoveDeps = [ "protobuf" ];
+                  });
+                  python3 = prev.python3.override {
+                    packageOverrides =
+                      python-self: python-super:
+                      (overlay_default prev python-super) //
+                      optional amd (overlay_amd prev python-super) //
+                      optional nvidia (overlay_nvidia prev python-super) //
+                      optional webui (overlay_webui prev python-super) //
+                      optional (!webui) (overlay_invoke prev python-super) //
+                      (overlay_pynixify python-self);
+                  };
+                })
+            ];
+          } // { inherit nvidia; };
     in
     {
       packages.${system} =
@@ -303,96 +315,96 @@
             pythonRelaxDeps = [ "torch" "pytorch-lightning" "flask-socketio" "flask" "dnspython" "fastapi" ];
             pythonRemoveDeps = [ "opencv-python" "flaskwebgui" "pyreadline3" ];
             postPatch = ''
-              # Add subprocess to the imports
-              substituteInPlace ./ldm/invoke/config/invokeai_configure.py --replace \
-              'import shutil' \
-'
-import shutil
-import subprocess
-'
-              # shutil.copytree will inherit the permissions of files in the /nix/store
-              # which are read only, so we subprocess.call cp instead and tell it not to
-              # preserve the mode
-              substituteInPlace ./ldm/invoke/config/invokeai_configure.py --replace \
-                "shutil.copytree(configs_src, configs_dest, dirs_exist_ok=True)" \
-                "subprocess.call(f'cp -r --no-preserve=mode {configs_src}/* {configs_dest}', shell=True)"
+                            # Add subprocess to the imports
+                            substituteInPlace ./ldm/invoke/config/invokeai_configure.py --replace \
+                            'import shutil' \
+              '
+              import shutil
+              import subprocess
+              '
+                            # shutil.copytree will inherit the permissions of files in the /nix/store
+                            # which are read only, so we subprocess.call cp instead and tell it not to
+                            # preserve the mode
+                            substituteInPlace ./ldm/invoke/config/invokeai_configure.py --replace \
+                              "shutil.copytree(configs_src, configs_dest, dirs_exist_ok=True)" \
+                              "subprocess.call(f'${nixpkgs.pkgs.coreutils}/bin/cp -r --no-preserve=mode {configs_src}/* {configs_dest}', shell=True)"
             '';
           };
-          webuiF = nixpkgs: 
-          let
-            submodel = pkg: nixpkgs.pkgs.python3.pkgs.${pkg} + "/lib/python3.10/site-packages";
-            taming-transformers = submodel "taming-transformers-rom1504";
-            k_diffusion = submodel "k-diffusion";
-            codeformer = (submodel "codeformer") + "/codeformer";
-            blip = (submodel "blip") + "/blip";
-          in
-          nixpkgs.python3.pkgs.buildPythonApplication {
-            pname = "stable-diffusion-webui";
-            version = "2023-03-12";
-            src = webui-repo;
-            format = "other";
-            propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; webui = true; nvidia = nixpkgs.nvidia; };
-            nativeBuildInputs = [ nixpkgs.pkgs.makeWrapper ];
-            meta.mainProgram = "flake-launch";
-            buildPhase = ''
-                  runHook preBuild
-                  cp -r . $out
-                  chmod -R +w $out
-                  cd $out
+          webuiF = nixpkgs:
+            let
+              submodel = pkg: nixpkgs.pkgs.python3.pkgs.${pkg} + "/lib/python3.10/site-packages";
+              taming-transformers = submodel "taming-transformers-rom1504";
+              k_diffusion = submodel "k-diffusion";
+              codeformer = (submodel "codeformer") + "/codeformer";
+              blip = (submodel "blip") + "/blip";
+            in
+            nixpkgs.python3.pkgs.buildPythonApplication {
+              pname = "stable-diffusion-webui";
+              version = "2023-03-12";
+              src = webui-repo;
+              format = "other";
+              propagatedBuildInputs = requirementsFor { pkgs = nixpkgs; webui = true; nvidia = nixpkgs.nvidia; };
+              nativeBuildInputs = [ nixpkgs.pkgs.makeWrapper ];
+              meta.mainProgram = "flake-launch";
+              buildPhase = ''
+                runHook preBuild
+                cp -r . $out
+                chmod -R +w $out
+                cd $out
 
-                  #firstly, we need to make launch.py runnable by adding python shebang
-                  cat <<-EOF > exec_launch.py.unwrapped
-                  $(echo "#!/usr/bin/python") 
-                  $(cat launch.py) 
-                  EOF
-                  chmod +x exec_launch.py.unwrapped
+                #firstly, we need to make launch.py runnable by adding python shebang
+                cat <<-EOF > exec_launch.py.unwrapped
+                $(echo "#!/usr/bin/python") 
+                $(cat launch.py) 
+                EOF
+                chmod +x exec_launch.py.unwrapped
 
-                  #creating wrapper around launch.py with PYTHONPATH correctly set
-                  makeWrapper "$(pwd)/exec_launch.py.unwrapped" exec_launch.py \
-                    --set-default PYTHONPATH $PYTHONPATH
+                #creating wrapper around launch.py with PYTHONPATH correctly set
+                makeWrapper "$(pwd)/exec_launch.py.unwrapped" exec_launch.py \
+                  --set-default PYTHONPATH $PYTHONPATH
 
-                  mkdir $out/bin
-                  pushd $out/bin
-                  ln -s ../exec_launch.py launch.py
-                  buck='$' #escaping $ inside shell inside shell is tricky
-                  #next is an additional shell wrapper, which sets sensible default args for CLI
-                  #additional arguments will be passed further
-                  cat <<-EOF > flake-launch
-                  #!/usr/bin/env bash 
-                  pushd $out        #For some reason, fastapi only works when current workdir is set inside the repo
-                  trap "popd" EXIT
+                mkdir $out/bin
+                pushd $out/bin
+                ln -s ../exec_launch.py launch.py
+                buck='$' #escaping $ inside shell inside shell is tricky
+                #next is an additional shell wrapper, which sets sensible default args for CLI
+                #additional arguments will be passed further
+                cat <<-EOF > flake-launch
+                #!/usr/bin/env bash 
+                pushd $out        #For some reason, fastapi only works when current workdir is set inside the repo
+                trap "popd" EXIT
 
-                  "$out/bin/launch.py" --skip-install "$buck{@}"
-                  EOF
-                    # below lie remnants of my attempt to make webui use similar paths as InvokeAI for models download
-                    # additions of such options in upstream is a welcome sign, however they're mostly ignored and therefore useless
-                    # TODO: check in 6 months, maybe it'll work
-                    # For now, your best bet is to use ZFS dataset with dedup enabled or make symlinks after the fact
+                "$out/bin/launch.py" --skip-install "$buck{@}"
+                EOF
+                  # below lie remnants of my attempt to make webui use similar paths as InvokeAI for models download
+                  # additions of such options in upstream is a welcome sign, however they're mostly ignored and therefore useless
+                  # TODO: check in 6 months, maybe it'll work
+                  # For now, your best bet is to use ZFS dataset with dedup enabled or make symlinks after the fact
                     
-                    #--codeformer-models-path "\$mp/codeformer" \
-                    #--gfpgan-models-path "\$mp/gfpgan" --esrgan-models-path "\$mp/esrgan" \
-                    #--bsrgan-models-path "\$mp/bsrgan" --realesrgan-models-path "\$mp/realesrgan" \
-                    #--clip-models-path "\$mp/clip" 
-                  chmod +x flake-launch
-                  popd
+                  #--codeformer-models-path "\$mp/codeformer" \
+                  #--gfpgan-models-path "\$mp/gfpgan" --esrgan-models-path "\$mp/esrgan" \
+                  #--bsrgan-models-path "\$mp/bsrgan" --realesrgan-models-path "\$mp/realesrgan" \
+                  #--clip-models-path "\$mp/clip" 
+                chmod +x flake-launch
+                popd
 
-                  runHook postBuild
-            '';
-            installPhase = ''
-                  runHook preInstall
+                runHook postBuild
+              '';
+              installPhase = ''
+                runHook preInstall
 
-                  rm -rf repositories/
-                  mkdir repositories
-                  pushd repositories
-                  ln -s ${inputs.stable-diffusion-repo}/ stable-diffusion-stability-ai
-                  ln -s ${taming-transformers}/ taming-transformers
-                  ln -s ${k_diffusion}/ k-diffusion
-                  ln -s ${codeformer}/ CodeFormer
-                  ln -s ${blip}/ BLIP
-                  popd
-                  runHook postInstall
-            '';
-          };
+                rm -rf repositories/
+                mkdir repositories
+                pushd repositories
+                ln -s ${inputs.stable-diffusion-repo}/ stable-diffusion-stability-ai
+                ln -s ${taming-transformers}/ taming-transformers
+                ln -s ${k_diffusion}/ k-diffusion
+                ln -s ${codeformer}/ CodeFormer
+                ln -s ${blip}/ BLIP
+                popd
+                runHook postInstall
+              '';
+            };
         in
         {
           invokeai = {
