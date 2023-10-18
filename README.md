@@ -40,6 +40,7 @@ Flake for running SD on NixOS
     1. `.#webui.default` builds package with default torch-bin that has CUDA-support by default
     1. `.#webui.amd` builds package which overrides torch packages with ROCM-enabled bin versions
 1. Webui is not a proper python package by itself, so I had to make a multi-layered wrapper script which sets required env and args. `bin/flake-launch` is a top-level wrapper, which sets default args and is running by default. `bin/launch.py` is a thin wrapper around original launch.py which only sets PYTHONPATH with required packages. Both wrappers pass additional args further down the pipeline. To list all available args you may run `nix run .#webui.amd -- --help`.
+2. If image generation fails with errors related to missing or read-only paths, please check settings tab inside web ui and set output paths to appropriate directories. Unfortunately, CLI doesn't expose these knobs, so it has to be done manually.
 
 ## Hardware quirks
 ### AMD
